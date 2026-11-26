@@ -1,20 +1,21 @@
 import { expect, test } from "bun:test";
-import { buildGrid, tooltip } from "./grid";
-import type { History } from "./history";
+import { buildGrid } from "./grid";
+import { dailyCommits, type History } from "./history";
 import * as pageLogic from "./pageLogic";
-import { viewFor } from "./pageLogic";
-import { renderSite, siteViews } from "./site";
+import { chosenSummary, commitCount, shadeDays, tooltip, viewFor } from "./pageLogic";
+import { pageCounts, renderSite, siteRepositories, siteViews } from "./site";
 import { escapeHtml, SITE_URL } from "./web";
 
 // 03:00 UTC on November 26th is still November 25th in New York.
 const history: History = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   timeZone: "America/New_York",
   asOf: "2026-11-26T03:00:00Z",
   days: {
-    "2024-12-30": { commits: 1, pullRequests: 1 },
-    "2025-06-02": { commits: 7, pullRequests: 2 },
-    "2026-11-25": { commits: 1234, pullRequests: 9 },
+    "2024-12-30": { "a2f0/api": { commits: 1, pullRequests: 1 } },
+    "2025-01-15": {},
+    "2025-06-02": { "a2f0/api": { commits: 3, pullRequests: 1 }, "a2f0/web": { commits: 4, pullRequests: 1 } },
+    "2026-11-25": { "a2f0/docs": { commits: 34, pullRequests: 1 }, "a2f0/web": { commits: 1200, pullRequests: 8 } },
   },
 };
 const site = renderSite(history);
@@ -69,7 +70,7 @@ test("the structured data parses as the WebSite at the canonical address", () =>
 });
 
 test("every day of the last year is a link target, labeled with GitHub's hover text", () => {
-  const days = buildGrid(history.days, "2026-11-25").rows.flat();
+  const days = buildGrid(dailyCommits(history.days), "2026-11-25").rows.flat();
   expect(days).toHaveLength(7 * 52 + 4);
   for (const cell of days) {
     expect(page).toContain(
@@ -133,6 +134,18 @@ test("each view has a radio button, the last year checked, and a label in the li
   }
 });
 
+test("the page has every element the toggles' script wires to", () => {
+  const script = page.match(/<script>\n(.*?)\n<\/script>/s)![1]!;
+  for (const id of ["repos", "counts", "repos-summary", "tooltip"]) {
+    expect(script).toContain(`getElementById("${id}")`);
+    expect(page.match(new RegExp(` id="${id}"`, "g"))).toHaveLength(1);
+  }
+  for (const selector of ['input[name="repo"]', "[data-choose]", ".calendar", "h2"]) expect(script).toContain(selector);
+  expect(page.match(/ data-choose="(all|none)"/g)).toHaveLength(2);
+  // Each graph carries the period its redrawn heading ends with.
+  expect(page.match(/ data-period="in (the last year|\d{4})"/g)).toHaveLength(siteViews(history).length);
+});
+
 test("the page's script parses and embeds the tested decisions", () => {
   const scripts = [...page.matchAll(/<script>\n(.*?)\n<\/script>/gs)].map(match => match[1]!);
   expect(scripts).toHaveLength(1);
@@ -144,7 +157,7 @@ test("the page's script parses and embeds the tested decisions", () => {
 });
 
 test("each view names the days a link can open, and every day of the last year opens there", () => {
-  const views = [...page.matchAll(/<section class="graph graph-[^"]+" data-view="([^"]+)" data-first="([^"]+)" data-last="([^"]+)">/g)].map(
+  const views = [...page.matchAll(/<section class="graph graph-[^"]+" data-view="([^"]+)" data-first="([^"]+)" data-last="([^"]+)" data-period="[^"]+">/g)].map(
     ([, id, first, last]) => [id!, first!, last!] as [string, string, string],
   );
   expect(views).toEqual([
@@ -153,9 +166,102 @@ test("each view names the days a link can open, and every day of the last year o
     ["2025", "2025-01-01", "2025-12-31"],
     ["2024", "2024-12-30", "2024-12-31"],
   ]);
-  for (const cell of buildGrid(history.days, "2026-11-25").rows.flat()) expect(viewFor(cell.date, views)).toBe("last");
+  for (const cell of buildGrid(dailyCommits(history.days), "2026-11-25").rows.flat()) expect(viewFor(cell.date, views)).toBe("last");
   // An older day opens its calendar year.
   expect(viewFor("2024-12-30", views)).toBe("2024");
+});
+
+/** Each calendar's days in page order, with their shades and hover text, and the heading of its view. */
+function calendars(html: string) {
+  return [...html.matchAll(/<section class="graph [^"]+" data-view="([^"]+)"[^>]* data-period="([^"]+)">\n<h2>([^<]+)<\/h2>(.*?)<\/section>/gs)].map(
+    ([, id, period, heading, body]) => ({
+      id: id!,
+      period: period!,
+      heading: heading!,
+      days: [...body!.matchAll(/data-date="([^"]+)" data-level="(\d)" aria-label="([^"]+)"/g)].map(([, date, level, label]) => ({
+        date: date!,
+        level: Number(level),
+        label: label!,
+      })),
+    }),
+  );
+}
+
+function toggles(html: string) {
+  return [
+    ...html.matchAll(
+      /<label class="repo" title="([^"]+)"><input type="checkbox" name="repo" value="(\d+)" autocomplete="off" checked><span>([^<]+)<\/span>(.*?)<\/label>/g,
+    ),
+  ].map(([, name, value, label, counts]) => ({
+    name,
+    value,
+    label,
+    counts: Object.fromEntries([...counts!.matchAll(/<span class="repo-count" data-view="([^"]+)">([^<]+)<\/span>/g)].map(([, view, count]) => [view, count])),
+  }));
+}
+
+test("the repository toggles below the calendar list each repository with commits, busiest first, all checked", () => {
+  expect(page).toContain('<fieldset class="repos" id="repos" hidden>');
+  // Below the calendars, inside the column they share, so the view's radio buttons reach it.
+  expect(page.indexOf('<fieldset class="repos"')).toBeGreaterThan(page.lastIndexOf('<section class="graph'));
+  expect(page.indexOf('<fieldset class="repos"')).toBeLessThan(page.indexOf('<nav class="years"'));
+  expect(toggles(page)).toEqual([
+    { name: "a2f0/web", value: "0", label: "web", counts: { last: "1,200", "2026": "1,200", "2025": "4", "2024": "0" } },
+    { name: "a2f0/docs", value: "1", label: "docs", counts: { last: "34", "2026": "34", "2025": "0", "2024": "0" } },
+    { name: "a2f0/api", value: "2", label: "api", counts: { last: "0", "2026": "0", "2025": "3", "2024": "1" } },
+  ]);
+  expect(page).toContain('<span id="repos-summary" aria-live="polite">All 3 repositories</span>');
+  expect(page).toContain('<button type="button" data-choose="all">All</button><button type="button" data-choose="none">None</button>');
+  for (const id of ["last", "2026", "2025", "2024"]) expect(page).toContain(`#view-${id}:checked~.layout .repo-count[data-view="${id}"]{display:block}`);
+});
+
+test("the counts the page carries reproduce every view, and total any choice of repositories", () => {
+  const counts = JSON.parse(page.match(/<script type="application\/json" id="counts">(.*?)<\/script>/s)![1]!);
+  // Only days with commits, each repository's in the order of the toggles.
+  expect(counts).toEqual({ "2024-12-30": [0, 0, 1], "2025-06-02": [4, 0, 3], "2026-11-25": [1200, 34, 0] });
+  const views = calendars(page);
+  expect(views.map(view => view.id)).toEqual(["last", "2026", "2025", "2024"]);
+  for (const view of views) {
+    const dates = view.days.map(day => day.date);
+    // Every repository chosen draws what the page was built with.
+    const all = shadeDays(dates, counts, [true, true, true]);
+    const levels: number[] = all.levels;
+    expect(levels).toEqual(view.days.map(day => day.level));
+    expect(dates.map((date, index) => escapeHtml(tooltip(date, all.commits[index]!)))).toEqual(view.days.map(day => day.label));
+    expect(`${commitCount(all.total)} ${view.period}`).toBe(view.heading);
+    // One repository alone totals what its toggle shows.
+    toggles(page).forEach((toggle, index) => {
+      const alone = [false, false, false];
+      alone[index] = true;
+      expect(shadeDays(dates, counts, alone).total.toLocaleString("en-US")).toBe(toggle.counts[view.id]!);
+    });
+  }
+  expect(chosenSummary([true, false, true])).toBe("2 of 3 repositories");
+});
+
+test("repositories keep their owners when they have several, and one without commits is left out", () => {
+  const mixed: History = {
+    ...history,
+    days: {
+      "2026-11-24": { "a2f0/web": { commits: 2, pullRequests: 1 }, "other/web": { commits: 2, pullRequests: 1 }, "a2f0/idle": { commits: 0, pullRequests: 0 } },
+    },
+  };
+  const repositories = siteRepositories(mixed, siteViews(mixed));
+  // Ties sort by name.
+  expect(repositories.map(repository => [repository.name, repository.label])).toEqual([
+    ["a2f0/web", "a2f0/web"],
+    ["other/web", "other/web"],
+  ]);
+  expect(pageCounts(mixed, repositories)).toEqual({ "2026-11-24": [2, 2] });
+});
+
+test("a history without commits has no toggles, and its script still parses", () => {
+  const quiet = renderSite({ ...history, days: { "2026-11-25": {} } }).get("index.html")!;
+  expect(quiet).not.toContain('class="repos"');
+  expect(quiet).toContain('<script type="application/json" id="counts">{}</script>');
+  expect(quiet).toContain("<h2>0 commits in the last year</h2>");
+  const script = quiet.match(/<script>\n(.*?)\n<\/script>/s)![1]!;
+  expect(() => new Function(script)).not.toThrow();
 });
 
 test("the 404 page stays out of search results and links back with absolute addresses", () => {

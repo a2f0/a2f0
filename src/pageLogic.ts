@@ -87,3 +87,64 @@ export function place(
   const above = day.top - tip.height - 4;
   return { left, top: above >= 0 ? above : day.bottom + 4 };
 }
+
+/** A day's shade: none, then the four quartiles of the view's busy days. */
+export type Level = 0 | 1 | 2 | 3 | 4;
+
+/** The English name of a month, 0 for January. */
+export function monthName(month: number): string {
+  return ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"][month]!;
+}
+
+/** GitHub's count: "1 commit", "1,234 commits". */
+export function commitCount(count: number): string {
+  return `${count.toLocaleString("en-US")} ${count === 1 ? "commit" : "commits"}`;
+}
+
+/** GitHub's hover text: "No commits on November 26th.", "1 commit on ...", "1,234 commits on ...". */
+export function tooltip(date: string, commits: number): string {
+  const day = Number(date.slice(8, 10));
+  const suffix = day % 100 >= 11 && day % 100 <= 13 ? "th" : (["th", "st", "nd", "rd"][day % 10] ?? "th");
+  const when = `${monthName(Number(date.slice(5, 7)) - 1)} ${day}${suffix}`;
+  return commits === 0 ? `No commits on ${when}.` : `${commitCount(commits)} on ${when}.`;
+}
+
+/**
+ * The upper bounds of levels 1 through 3: the quartiles of the days with any
+ * commits, so the shades spread across the view's busy days as GitHub's do.
+ */
+export function levelBounds(counts: number[]): [number, number, number] {
+  const busy = counts.filter(count => count > 0).sort((a, b) => a - b);
+  if (busy.length === 0) return [0, 0, 0];
+  const quartile = (fraction: number) => busy[Math.ceil(fraction * busy.length) - 1]!;
+  return [quartile(0.25), quartile(0.5), quartile(0.75)];
+}
+
+export function level(count: number, bounds: [number, number, number]): Level {
+  if (count === 0) return 0;
+  const index = bounds.findIndex(bound => count <= bound);
+  return (index === -1 ? 4 : index + 1) as Level;
+}
+
+/** A day's commits in the chosen repositories, from each repository's count in the order of `chosen`; none for a day without counts. */
+export function chosenCommits(counts: number[] | undefined, chosen: boolean[]): number {
+  return chosen.reduce((total, isChosen, index) => total + (isChosen ? (counts?.[index] ?? 0) : 0), 0);
+}
+
+/**
+ * One view's days counted in the chosen repositories: each day's commits and
+ * shade, shaded among the view's own days, and the view's total.
+ */
+export function shadeDays(dates: string[], days: Record<string, number[]>, chosen: boolean[]): { commits: number[]; levels: Level[]; total: number } {
+  const commits = dates.map(date => chosenCommits(Object.hasOwn(days, date) ? days[date] : undefined, chosen));
+  const bounds = levelBounds(commits);
+  return { commits, levels: commits.map(count => level(count, bounds)), total: commits.reduce((total, count) => total + count, 0) };
+}
+
+/** How many of the repositories count: "All 18 repositories", "3 of 18 repositories", "No repositories", or "1 repository" when it is the only one. */
+export function chosenSummary(chosen: boolean[]): string {
+  const count = chosen.filter(Boolean).length;
+  if (count === 0) return "No repositories";
+  if (count < chosen.length) return `${count} of ${chosen.length} repositories`;
+  return count === 1 ? "1 repository" : `All ${count} repositories`;
+}
