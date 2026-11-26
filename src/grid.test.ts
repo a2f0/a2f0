@@ -13,7 +13,7 @@ test("the grid ends today and starts on the Sunday 52 weeks before this week's",
   expect(grid.rows[1]![1]!.date).toBe(addDays("2025-11-24", 7));
 });
 
-test("a range that starts on a Sunday and counts from its first day has no blank day, which buildGrid's type relies on", () => {
+test("a range that starts on a Sunday and counts from its first day has no blank day, so buildGrid never throws", () => {
   expect(buildRange({}, "2025-11-23", "2026-11-25").rows.flat()).not.toContain(null);
   // One day later, the first Sunday is blank.
   expect(buildRange({}, "2025-11-24", "2026-11-25").rows[0]![0]).toBeNull();

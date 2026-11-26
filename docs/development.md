@@ -1,10 +1,10 @@
 # Development
 
-This repository is the a2f0 GitHub profile repository. GitHub would show a
-root `README.md` at <https://github.com/a2f0>, and the profile stays at
-GitHub's default, so the repository has no README and this guide holds what
-one would. This repo is available on the web at <https://a2f0.github.io/a2f0/>,
-which serves the contributions grid.
+This repository is the a2f0 GitHub profile repository, and it serves a
+contributions grid as a web page. GitHub would show a root `README.md` at
+<https://github.com/a2f0>, and the profile stays at GitHub's default, so the
+repository has no README and this guide holds what one would. This repo is
+available on the web at <https://a2f0.github.io/a2f0/>.
 
 ## Quick start
 
