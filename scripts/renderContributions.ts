@@ -34,6 +34,7 @@ export function renderChanges(root: string): { write: [string, string][]; remove
     const target = path.join(root, file);
     return !existsSync(target) || readFileSync(target, "utf8") !== content;
   });
+  // contributions/ holds only generated files: any other image there is removed.
   const assets = path.join(root, ASSET_DIR);
   const images = existsSync(assets) ? readdirSync(assets).filter(name => name.endsWith(".svg")) : [];
   const remove = images.map(name => `${ASSET_DIR}/${name}`).filter(file => !files.has(file));
