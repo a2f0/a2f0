@@ -99,6 +99,18 @@ test("each calendar row is a label cell then one cell per week, the indexing the
   });
 });
 
+test("each calendar's one Tab stop is its newest day", () => {
+  const views = siteViews(history);
+  const tables = [...page.matchAll(/<table class="calendar"[^>]*>(.*?)<\/table>/gs)].map(match => match[1]!);
+  tables.forEach((table, index) => {
+    const stops = [...table.matchAll(/data-date="([^"]+)"[^>]* tabindex="0"/g)].map(match => match[1]);
+    expect(stops).toEqual([views[index]!.last]);
+    expect(table.match(/class="day"/g)!.length).toBe(table.match(/tabindex="-?[01]"/g)!.length);
+  });
+  // The last year ends on a Wednesday, so its newest day is not the last in document order.
+  expect(views[0]!.last).toBe("2026-11-25");
+});
+
 test("only the last year's days carry ids, so each id is unique", () => {
   const ids = [...page.matchAll(/ id="(\d{4}-\d{2}-\d{2})"/g)].map(match => match[1]);
   expect(ids).toHaveLength(7 * 52 + 4);

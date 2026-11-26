@@ -76,17 +76,22 @@ function monthHeader(grid: Grid): string {
   return cells.join("");
 }
 
-/** A day, whose label is its hover text; only the first view's days carry ids, which the README links to. */
-function day(cell: Cell | null, ids: boolean): string {
+/**
+ * A day, whose label is its hover text. Only the first view's days carry ids,
+ * which the README links to. The newest day is the calendar's one Tab stop
+ * until the script moves it, as a roving tabindex does.
+ */
+function day(cell: Cell | null, ids: boolean, newest: string): string {
   if (!cell) return "<td></td>";
   const id = ids ? ` id="${cell.date}"` : "";
-  return `<td class="day"${id} data-date="${cell.date}" data-level="${cell.level}" aria-label="${escapeHtml(tooltip(cell.date, cell.commits))}"></td>`;
+  const tabindex = cell.date === newest ? "0" : "-1";
+  return `<td class="day"${id} data-date="${cell.date}" data-level="${cell.level}" aria-label="${escapeHtml(tooltip(cell.date, cell.commits))}" tabindex="${tabindex}"></td>`;
 }
 
 function calendar(view: View, ids: boolean): string {
   const rows = view.grid.rows.map((cells, weekday) => {
     const label = LABELS[weekday] ? `<span>${LABELS[weekday]}</span>` : "";
-    return `<tr><td class="label">${label}</td>${cells.map(cell => day(cell, ids)).join("")}</tr>`;
+    return `<tr><td class="label">${label}</td>${cells.map(cell => day(cell, ids, view.last)).join("")}</tr>`;
   });
   return [
     `<table class="calendar" role="grid" aria-readonly="true" aria-label="${escapeHtml(view.heading)}">`,
@@ -201,11 +206,6 @@ ${Object.values(pageLogic)
     for (const other of day.closest("table").querySelectorAll('.day[tabindex="0"]')) other.tabIndex = -1;
     day.tabIndex = 0;
   };
-  for (const table of document.querySelectorAll(".calendar")) {
-    const days = table.querySelectorAll(".day");
-    for (const day of days) day.tabIndex = -1;
-    if (days.length) days[days.length - 1].tabIndex = 0;
-  }
   document.addEventListener("pointerover", event => {
     const day = dayOf(event.target);
     if (day) dispatch({ type: "enter", day });
@@ -237,12 +237,12 @@ ${Object.values(pageLogic)
   const scrollToEnd = () => {
     for (const box of document.querySelectorAll(".scroll")) box.scrollLeft = box.scrollWidth;
   };
-  for (const input of document.querySelectorAll(".view")) {
-    input.addEventListener("change", () => {
-      dispatch({ type: "dismiss" });
-      scrollToEnd();
-    });
-  }
+  // Choosing a view, by its label or by a link, hides the tooltip and starts at the newest weeks.
+  const viewChanged = () => {
+    dispatch({ type: "dismiss" });
+    scrollToEnd();
+  };
+  for (const input of document.querySelectorAll(".view")) input.addEventListener("change", viewChanged);
   scrollToEnd();
   const views = [...document.querySelectorAll(".graph")].map(graph => [graph.dataset.view, graph.dataset.first, graph.dataset.last]);
   const open = () => {
@@ -250,7 +250,11 @@ ${Object.values(pageLogic)
     const view = viewFor(date, views);
     const day = view && document.querySelector(".graph-" + view + ' .day[data-date="' + date + '"]');
     if (!day) return;
-    document.getElementById("view-" + view).checked = true;
+    const input = document.getElementById("view-" + view);
+    if (!input.checked) {
+      input.checked = true;
+      viewChanged();
+    }
     rove(day);
     day.scrollIntoView({ block: "center", inline: "center" });
     day.focus({ preventScroll: true });

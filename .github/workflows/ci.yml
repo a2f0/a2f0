@@ -157,8 +157,9 @@ jobs:
           fi
 
   # Publishes the page this run built once every check has passed. Only a run
-  # for main's tip gets here, so the environment's deployments name what is live;
-  # the check repeats inside the pages queue in case main moved while it waited.
+  # for main's tip gets here. The check repeats inside the pages queue in case
+  # main moved while the job waited; that rare skip still leaves an empty
+  # environment deployment, since the job has already started.
   deploy:
     name: Deploy
     if: needs.tip.outputs.current == 'true'

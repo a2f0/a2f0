@@ -132,8 +132,9 @@ that the commit is still `main`'s tip, and only then does the `Deploy` job
 publish that artifact with `actions/deploy-pages`, checking the tip again
 inside the `pages` queue first. When `main` has moved on,
 the newer commit's run deploys once it passes, and until then the page stays
-at the last deployed commit; the `github-pages` environment records only real
-deployments. Pages is set to build from
+at the last deployed commit. Superseded runs stop at `Main tip`, before the
+`github-pages` environment, unless `main` moves while their deploy waits in
+the queue. Pages is set to build from
 GitHub Actions (`build_type: workflow`), and the deploy uses the
 `github-pages` environment.
 
