@@ -24,8 +24,9 @@ Run `bun run check` for Biome, the type checker, the tests, the site build,
 ShellCheck over the hooks, the binary-file check, and the managed skill and
 permission checks. Biome also rejects import cycles, counting type-only
 imports. The modules without imports are `src/history.ts`, `src/web.ts`,
-`src/theme.ts`, and `src/pageLogic.ts`; `src/grid.ts` builds on the history,
-`src/site.ts` on every other module, and the scripts on top. The page embeds
+`src/theme.ts`, and `src/pageLogic.ts`; `src/grid.ts` builds on the history
+and the page logic, `src/site.ts` on every other module, and the scripts on
+top. The page embeds
 every function in `src/pageLogic.ts` by its source, so each may use only its
 parameters, built-ins, and the other functions there.
 
@@ -87,8 +88,10 @@ lists leads. Reviews flag new implicit machines.
 Here a closed state type is a TypeScript discriminated union on a `kind` field,
 with its transition function beside it. The site renderer is a pure function
 from the counts file to files; the web page's tooltip is the one machine,
-`nextTooltip` in `src/pageLogic.ts`, which every listener in the page script
-feeds.
+`nextTooltip` in `src/pageLogic.ts`, which every pointer, focus, and key
+listener in the page script feeds. The repository toggles keep no state of
+their own: each change redraws every view from the checkboxes through
+`shadeDays`.
 
 ## Shared skills and shipping
 

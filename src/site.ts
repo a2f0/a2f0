@@ -1,5 +1,5 @@
-import { buildGrid, buildYear, type Cell, type Grid, MONTHS, tooltip } from "./grid";
-import { type History, localDate } from "./history";
+import { buildGrid, buildYear, type Cell, type Grid, MONTHS } from "./grid";
+import { dailyCommits, type History, localDate } from "./history";
 import * as pageLogic from "./pageLogic";
 import { DARK, FONT, LIGHT, type Theme } from "./theme";
 import { escapeHtml, SITE_URL } from "./web";
@@ -7,7 +7,8 @@ import { escapeHtml, SITE_URL } from "./web";
 /**
  * The contributions grid as a web page, with GitHub's tooltip: the measured
  * size, colors, and placement above the day. It renders from the history
- * alone, and needs script only for the tooltips and keyboard focus; the years
+ * alone, counting every repository, and needs script only for the tooltips,
+ * keyboard focus, and the repository toggles below the calendar; the years
  * switch with radio buttons.
  */
 
@@ -20,6 +21,8 @@ const LABELS = ["", "Mon", "", "Wed", "", "Fri", ""];
 export interface View {
   /** `last` for the year that ends today, or the calendar year. */
   id: string;
+  /** What the heading counts commits in: "in the last year", "in 2025". */
+  period: string;
   heading: string;
   grid: Grid;
   /** The first and last days with a cell, which a `#<date>` link can open. */
@@ -27,16 +30,21 @@ export interface View {
   last: string;
 }
 
-function view(id: string, heading: string, grid: Grid): View {
+export interface Repository {
+  /** `owner/name`. */
+  name: string;
+  /** The name shown: without the owner when every repository shares one. */
+  label: string;
+  /** The repository's commits in each view, by view id. */
+  commits: Record<string, number>;
+}
+
+function view(id: string, period: string, grid: Grid): View {
   const dates = grid.rows
     .flat()
     .flatMap(cell => (cell ? [cell.date] : []))
     .sort();
-  return { id, heading, grid, first: dates[0]!, last: dates.at(-1)! };
-}
-
-function commits(count: number): string {
-  return `${count.toLocaleString("en-US")} ${count === 1 ? "commit" : "commits"}`;
+  return { id, period, heading: `${pageLogic.commitCount(grid.commits)} ${period}`, grid, first: dates[0]!, last: dates.at(-1)! };
 }
 
 function longDate(date: string): string {
@@ -52,13 +60,51 @@ function span(history: History): { oldest: string; today: string } {
 /** The year ending on the local date of asOf, then each calendar year from that one back to the oldest counted. */
 export function siteViews(history: History): View[] {
   const { oldest, today } = span(history);
-  const last = buildGrid(history.days, today);
-  const views = [view("last", `${commits(last.commits)} in the last year`, last)];
+  const commits = dailyCommits(history.days);
+  const views = [view("last", "in the last year", buildGrid(commits, today))];
   for (let year = Number(today.slice(0, 4)); year >= Number(oldest.slice(0, 4)); year--) {
-    const grid = buildYear(history.days, year, today, oldest);
-    views.push(view(String(year), `${commits(grid.commits)} in ${year}`, grid));
+    views.push(view(String(year), `in ${year}`, buildYear(commits, year, today, oldest)));
   }
   return views;
+}
+
+/** A repository's commits on the days from `first` through `last`. */
+function commitsBetween(history: History, name: string, first: string, last: string): number {
+  return Object.entries(history.days).reduce(
+    (total, [date, repositories]) => total + (first <= date && date <= last ? (repositories[name]?.commits ?? 0) : 0),
+    0,
+  );
+}
+
+/** Every repository with any counted commits, busiest first and then by name, with its commits in each view. */
+export function siteRepositories(history: History, views: View[]): Repository[] {
+  const totals = new Map<string, number>();
+  for (const repositories of Object.values(history.days)) {
+    for (const [name, day] of Object.entries(repositories)) totals.set(name, (totals.get(name) ?? 0) + day.commits);
+  }
+  const names = [...totals]
+    .filter(([, total]) => total > 0)
+    .sort(([a, aTotal], [b, bTotal]) => bTotal - aTotal || (a < b ? -1 : 1))
+    .map(([name]) => name);
+  const owners = new Set(names.map(name => name.split("/")[0]));
+  return names.map(name => ({
+    name,
+    label: owners.size === 1 ? name.split("/")[1]! : name,
+    commits: Object.fromEntries(views.map(view => [view.id, commitsBetween(history, name, view.first, view.last)])),
+  }));
+}
+
+/**
+ * Each day's commits in every repository, in the order of the toggles, for
+ * the days with any: the counts the page script totals for the chosen ones.
+ */
+export function pageCounts(history: History, repositories: Repository[]): Record<string, number[]> {
+  return Object.fromEntries(
+    Object.entries(history.days).flatMap(([date, counts]) => {
+      const commits = repositories.map(repository => counts[repository.name]?.commits ?? 0);
+      return commits.some(count => count > 0) ? [[date, commits]] : [];
+    }),
+  );
 }
 
 /** Month names over the columns they start, each spanning the columns up to the next. */
@@ -84,7 +130,7 @@ function day(cell: Cell | null, ids: boolean, newest: string): string {
   if (!cell) return "<td></td>";
   const id = ids ? ` id="${cell.date}"` : "";
   const tabindex = cell.date === newest ? "0" : "-1";
-  return `<td class="day"${id} data-date="${cell.date}" data-level="${cell.level}" aria-label="${escapeHtml(tooltip(cell.date, cell.commits))}" tabindex="${tabindex}"></td>`;
+  return `<td class="day"${id} data-date="${cell.date}" data-level="${cell.level}" aria-label="${escapeHtml(pageLogic.tooltip(cell.date, cell.commits))}" tabindex="${tabindex}"></td>`;
 }
 
 function calendar(view: View, ids: boolean): string {
@@ -103,7 +149,7 @@ function calendar(view: View, ids: boolean): string {
 function graph(view: View, ids: boolean): string {
   const legend = [0, 1, 2, 3, 4].map(level => `<span class="cell" data-level="${level}"></span>`).join("");
   return [
-    `<section class="graph graph-${view.id}" data-view="${view.id}" data-first="${view.first}" data-last="${view.last}">`,
+    `<section class="graph graph-${view.id}" data-view="${view.id}" data-first="${view.first}" data-last="${view.last}" data-period="${escapeHtml(view.period)}">`,
     `<h2>${escapeHtml(view.heading)}</h2>`,
     `<div class="box"><div class="scroll">`,
     calendar(view, ids),
@@ -114,18 +160,36 @@ function graph(view: View, ids: boolean): string {
   ].join("\n");
 }
 
+/**
+ * The repository toggles below the calendar, each with its commits in the view
+ * shown. Only the script can act on them, so they start hidden.
+ */
+function repositoryPanel(repositories: Repository[], views: View[]): string {
+  const toggles = repositories.map((repository, index) => {
+    const counts = views.map(view => `<span class="repo-count" data-view="${view.id}">${repository.commits[view.id]!.toLocaleString("en-US")}</span>`);
+    return `<label class="repo" title="${escapeHtml(repository.name)}"><input type="checkbox" name="repo" value="${index}" checked><span>${escapeHtml(repository.label)}</span>${counts.join("")}</label>`;
+  });
+  return [
+    '<fieldset class="repos" id="repos" hidden>',
+    "<legend>Repositories</legend>",
+    `<div class="repos-bar"><span id="repos-summary" aria-live="polite">${pageLogic.chosenSummary(repositories.map(() => true))}</span><button type="button" data-choose="all">All</button><button type="button" data-choose="none">None</button></div>`,
+    `<div class="repos-list">\n${toggles.join("\n")}\n</div>`,
+    "</fieldset>",
+  ].join("\n");
+}
+
 function themeVariables(theme: Theme): string {
   const levels = theme.levels.map((color, level) => `--l${level}:${color}`).join(";");
   return `${levels};--cell-border:${theme.border};--canvas:${theme.canvas};--text:${theme.text};--muted:${theme.muted};--line:${theme.line};--accent:${theme.accent};--hover:${theme.hover};--tooltip:${theme.tooltip}`;
 }
 
-/** Show the checked view and mark its entry in the year list. */
+/** Show the checked view and each repository's commits in it, and mark its entry in the year list. */
 function viewRules(views: View[]): string {
   return views
     .map(view => {
       const checked = `#view-${view.id}:checked~.layout`;
       const label = `label[for="view-${view.id}"]`;
-      return `${checked} .graph-${view.id}{display:block}${checked} ${label}{color:#fff;background:var(--accent)}#view-${view.id}:focus-visible~.layout ${label}{outline:2px solid var(--accent);outline-offset:2px}`;
+      return `${checked} .graph-${view.id}{display:block}${checked} .repo-count[data-view="${view.id}"]{display:block}${checked} ${label}{color:#fff;background:var(--accent)}#view-${view.id}:focus-visible~.layout ${label}{outline:2px solid var(--accent);outline-offset:2px}`;
     })
     .join("\n");
 }
@@ -162,6 +226,20 @@ ${levels}
 .footer{display:flex;justify-content:space-between;align-items:center;gap:16px;margin:4px 0 0 34px;font-size:12px;color:var(--muted)}
 .legend{display:flex;align-items:center;gap:3px;white-space:nowrap}
 .legend .cell{margin:0 1px}
+.repos{margin:16px 0 0;padding:0;border:0;min-width:0}
+.repos[hidden]{display:none}
+.repos legend{float:left;margin:0 12px 8px 0;padding:0;font-size:14px;font-weight:600;line-height:24px}
+.repos-bar{display:flex;align-items:center;gap:12px;margin:0 0 8px;font-size:12px;line-height:24px;color:var(--muted)}
+.repos-bar span{margin-right:auto}
+.repos-bar button{padding:0 8px;border:1px solid var(--line);border-radius:6px;background:none;color:var(--text);font:inherit;cursor:pointer}
+.repos-bar button:hover{background:var(--hover)}
+.repos-list{clear:both;display:flex;flex-wrap:wrap;gap:8px}
+.repo{display:flex;align-items:center;gap:6px;padding:4px 10px 4px 8px;border:1px solid var(--line);border-radius:999px;font-size:12px;line-height:18px;cursor:pointer;user-select:none}
+.repo:hover{background:var(--hover)}
+.repo input{margin:0;accent-color:var(--accent)}
+.repo:has(input:not(:checked)){color:var(--muted)}
+.repo-count{display:none;color:var(--muted)}
+.repos button:focus-visible,.repo input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .years{display:flex;flex-direction:column;gap:8px;width:120px;flex:none}
 .years label{display:block;padding:8px 16px;border-radius:6px;font-size:12px;line-height:18px;color:var(--muted);cursor:pointer}
 .years label:hover{color:var(--text);background:var(--hover)}
@@ -169,7 +247,7 @@ ${viewRules(views)}
 .tooltip{position:absolute;top:0;left:0;z-index:100;max-width:320px;padding:4px 8px;border-radius:6px;background:var(--tooltip);color:#fff;font:12px/1.625 ${FONT};text-align:center;pointer-events:none}
 .tooltip[hidden]{display:none}
 footer{margin-top:32px;font-size:12px;color:var(--muted)}
-@media (max-width:767px){.layout{flex-direction:column;align-items:stretch}.years{flex-direction:row;flex-wrap:wrap;width:auto}}`;
+@media (max-width:767px){.layout{flex-direction:column;align-items:stretch}.years{flex-direction:row;flex-wrap:wrap;width:auto}.graphs{display:contents}.repos{order:1;margin:0}}`;
 }
 
 /**
@@ -177,7 +255,9 @@ footer{margin-top:32px;font-size:12px;color:var(--muted)}
  * every one of which it embeds by its source. Every pointer, focus, and key
  * listener dispatches one tooltip event, and `render` draws whatever state
  * `nextTooltip` returns. Arrow keys move focus between days, and a link to
- * `#<date>` opens that day.
+ * `#<date>` opens that day. The repository toggles hold the only other
+ * choice: each change redraws every view from the boxes as they stand, with
+ * `shadeDays`, so the page keeps no copy of the selection.
  */
 const SCRIPT = `(() => {
 ${Object.values(pageLogic)
@@ -238,6 +318,41 @@ ${Object.values(pageLogic)
   });
   addEventListener("scroll", render, true);
   addEventListener("resize", render);
+  // Recount and reshade every view, its heading, and its hover text for the chosen repositories.
+  const panel = document.getElementById("repos");
+  if (panel) {
+    const counts = JSON.parse(document.getElementById("counts").textContent);
+    const boxes = [...panel.querySelectorAll('input[name="repo"]')];
+    const graphs = [...document.querySelectorAll(".graph")].map(graph => {
+      const days = [...graph.querySelectorAll(".day")];
+      return { graph, days, dates: days.map(day => day.dataset.date) };
+    });
+    const recount = () => {
+      const chosen = boxes.map(box => box.checked);
+      for (const { graph, days, dates } of graphs) {
+        const shade = shadeDays(dates, counts, chosen);
+        days.forEach((day, index) => {
+          day.dataset.level = shade.levels[index];
+          day.setAttribute("aria-label", tooltip(dates[index], shade.commits[index]));
+        });
+        const heading = commitCount(shade.total) + " " + graph.dataset.period;
+        graph.querySelector("h2").textContent = heading;
+        graph.querySelector(".calendar").setAttribute("aria-label", heading);
+      }
+      document.getElementById("repos-summary").textContent = chosenSummary(chosen);
+      render();
+    };
+    panel.addEventListener("change", recount);
+    for (const button of panel.querySelectorAll("[data-choose]")) {
+      button.addEventListener("click", () => {
+        for (const box of boxes) box.checked = button.dataset.choose === "all";
+        recount();
+      });
+    }
+    // A reload can restore boxes the reader cleared, so draw whatever they hold.
+    recount();
+    panel.hidden = false;
+  }
   // Like GitHub, show the newest weeks first when the calendar is wider than the page.
   const scrollToEnd = () => {
     for (const box of document.querySelectorAll(".scroll")) box.scrollLeft = box.scrollWidth;
@@ -268,8 +383,13 @@ ${Object.values(pageLogic)
   open();
 })();`;
 
+/** JSON safe inside a script element. */
+function scriptJson(value: unknown): string {
+  return JSON.stringify(value).replace(/</g, "\\u003c");
+}
+
 function head(views: View[]): string {
-  const structured = JSON.stringify({ "@context": "https://schema.org", "@type": "WebSite", name: "a2f0", url: SITE_URL, description: DESCRIPTION });
+  const structured = scriptJson({ "@context": "https://schema.org", "@type": "WebSite", name: "a2f0", url: SITE_URL, description: DESCRIPTION });
   return [
     '<meta charset="utf-8">',
     '<meta name="viewport" content="width=device-width, initial-scale=1">',
@@ -291,13 +411,14 @@ function head(views: View[]): string {
     '<link rel="icon" href="favicon.ico" sizes="any">',
     '<link rel="icon" href="favicon.svg" type="image/svg+xml">',
     '<link rel="apple-touch-icon" href="apple-touch-icon.png">',
-    `<script type="application/ld+json">${structured.replace(/</g, "\\u003c")}</script>`,
+    `<script type="application/ld+json">${structured}</script>`,
     `<style>\n${styles(views)}\n</style>`,
   ].join("\n");
 }
 
 function page(history: History): string {
   const views = siteViews(history);
+  const repositories = siteRepositories(history, views);
   const { oldest, today } = span(history);
   const inputs = views.map(view => `<input type="radio" class="view" name="view" id="view-${view.id}"${view.id === "last" ? " checked" : ""}>`);
   const years = views.map(view => `<label for="view-${view.id}">${view.id === "last" ? "Last year" : view.id}</label>`);
@@ -310,12 +431,13 @@ ${head(views)}
 <main>
 <header>
 <h1>a2f0</h1>
-<p>Commits in pull requests merged across the repositories that the <a href="https://github.com/a2f0/matrix">matrix</a> workspace manages, counted before squash merging collapsed them, from ${longDate(oldest)} through ${longDate(today)}. Hover over or focus a day to see its count.</p>
+<p>Commits in pull requests merged across the repositories that the <a href="https://github.com/a2f0/matrix">matrix</a> workspace manages, counted before squash merging collapsed them, from ${longDate(oldest)} through ${longDate(today)}. Hover over or focus a day to see its count, and choose repositories below the calendar to count only theirs.</p>
 </header>
 ${inputs.join("\n")}
 <div class="layout">
 <div class="graphs">
 ${views.map((view, index) => graph(view, index === 0)).join("\n")}
+${repositories.length > 0 ? repositoryPanel(repositories, views) : ""}
 </div>
 <nav class="years" aria-label="Year">
 ${years.join("\n")}
@@ -324,6 +446,7 @@ ${years.join("\n")}
 <footer><a href="https://github.com/a2f0">github.com/a2f0</a></footer>
 </main>
 <div class="tooltip" id="tooltip" role="tooltip" hidden></div>
+<script type="application/json" id="counts">${scriptJson(pageCounts(history, repositories))}</script>
 <script>
 ${SCRIPT}
 </script>

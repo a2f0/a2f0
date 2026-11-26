@@ -26,17 +26,18 @@ checks. `site:dev` builds the web page into `dist/site` and serves it;
 The grid copies GitHub's contribution calendar, but each day counts the
 original commits in pull requests merged that day across the repositories the
 [matrix](https://github.com/a2f0/matrix) workspace manages, before squash
-merging collapsed them.
+merging collapsed them. The counts are kept per repository, so toggles below
+the calendar can leave repositories out of the totals.
 
 | Path | Contents |
 | --- | --- |
 | `contributions/commits.json` | Daily counts, written only by matrix's `bun run contributions` |
-| `src/history.ts` | Reads and validates the counts |
-| `src/grid.ts` | The 53-week calendar, calendar years, shade levels, month labels, and hover text |
+| `src/history.ts` | Reads and validates the counts, and totals each day across repositories |
+| `src/grid.ts` | The 53-week calendar, calendar years, and month labels |
 | `src/theme.ts` | Primer's light and dark colors |
 | `src/web.ts` | The page's address and HTML escaping |
-| `src/pageLogic.ts` | The page script's decisions: the tooltip's state machine, link routing, arrow keys, and placement |
-| `src/site.ts` | The web page, its 404 page, and its sitemap |
+| `src/pageLogic.ts` | The page script's decisions: the tooltip's state machine, link routing, arrow keys, placement, and the shades, hover text, and totals of the chosen repositories |
+| `src/site.ts` | The web page, its repository toggles, its 404 page, and its sitemap |
 | `scripts/buildSite.ts` | `bun run site:build` and `site:dev`, into the ignored `dist/site` |
 | `assets/brand/logo.svg` | The mark agent-tool renders into the site's icons and preview image |
 
@@ -50,16 +51,20 @@ merging it deploys the page. `commits.json` has this shape, one line per day:
 
 ```json
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "timeZone": "America/New_York",
   "asOf": "2026-11-26T17:00:00.000Z",
   "days": {
-    "2026-11-25": { "commits": 314, "pullRequests": 44 }
+    "2026-11-24": {},
+    "2026-11-25": { "a2f0/matrix": { "commits": 14, "pullRequests": 4 }, "a2f0/tearleads": { "commits": 300, "pullRequests": 40 } }
   }
 }
 ```
 
-Days are local calendar days in `timeZone`. `asOf` is when the latest count
+Each day lists, by `owner/name`, the repositories that merged a pull request
+that day, with their original commits and merged pull requests; a day without
+merges is `{}`. A commit counts once per repository per day, so a day's total
+is the sum of its repositories'. Days are local calendar days in `timeZone`. `asOf` is when the latest count
 began; the last year ends on its local date, which keeps the page a pure
 function of the file. Every counted day stays in the file, including those
 older than a year, for views of earlier years. Shades follow the quartiles of
@@ -79,6 +84,15 @@ window.
   weeks, and days before the first count stay blank rather than showing zero.
   The last year counts a missing day as none; the counter's first run counts
   all 53 weeks, so none is missing in practice.
+- **Repositories.** Below the calendar, a checkbox for each repository with
+  any commits, busiest first, shows its commits in the view shown; All and
+  None choose every one or none. Each change totals the chosen repositories'
+  commits from the per-repository counts the page carries as JSON, and
+  reshades every view among its own days, with the same functions the build
+  shades with, so every repository chosen draws exactly the built page. The
+  headings and hover text follow the choice. The page is built with every
+  repository counted, and the toggles stay hidden without script, since only
+  script can act on them.
 - **Links.** `#YYYY-MM-DD` opens that day, in the last year when it falls there
   and otherwise in its calendar year, and shows its tooltip. Only the last
   year's days carry those ids, so each is unique. A blank day, a date that
@@ -87,11 +101,14 @@ window.
   Escape hides the tooltip wherever focus is.
 - **Script.** Every pointer, focus, and key listener dispatches one event to
   the tooltip's transition function, `nextTooltip`, and the page draws the
-  state it returns. That function, the link routing, the arrow-key steps, and
-  the placement are pure functions in `src/pageLogic.ts`; the page embeds them
-  by their source, and the tests run those embedded copies.
+  state it returns. That function, the link routing, the arrow-key steps, the
+  placement, and the repository totals and shades are pure functions in
+  `src/pageLogic.ts`; the page embeds them by their source, and the tests run
+  those embedded copies. The toggles keep no state beside the checkboxes:
+  each change redraws from them.
 - **Narrow screens.** The calendar scrolls inside its box and starts at the
-  newest week, as GitHub's does.
+  newest week, as GitHub's does. The year list moves under the calendar,
+  above the repositories.
 
 ### Deploying
 

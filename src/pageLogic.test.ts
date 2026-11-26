@@ -113,3 +113,57 @@ test("the tooltip sits centered 4 pixels above the day, inside the window, or be
   expect(embedded.place({ ...day, left: 1270 }, tip, 1280).left).toBe(1280 - 180 - 8);
   expect(embedded.place({ ...day, top: 10, bottom: 20 }, tip, 1280).top).toBe(24);
 });
+
+test("shades follow the quartiles of the busy days", () => {
+  const bounds = embedded.levelBounds([0, 1, 2, 3, 4, 5, 6, 7, 8]);
+  expect(bounds).toEqual([2, 4, 6]);
+  expect([0, 1, 2, 3, 4, 5, 6, 7, 800].map(count => embedded.level(count, bounds))).toEqual([0, 1, 1, 2, 2, 3, 3, 4, 4]);
+  expect(embedded.levelBounds([0, 0])).toEqual([0, 0, 0]);
+  expect(embedded.level(0, [0, 0, 0])).toBe(0);
+  // A single busy day is still a shade, not blank.
+  expect(embedded.level(5, embedded.levelBounds([5]))).toBe(1);
+});
+
+test.each([
+  ["2026-11-26", 0, "No commits on November 26th."],
+  ["2026-01-01", 1, "1 commit on January 1st."],
+  ["2026-03-22", 1234, "1,234 commits on March 22nd."],
+  ["2026-05-03", 3, "3 commits on May 3rd."],
+  ["2026-06-11", 2, "2 commits on June 11th."],
+  ["2026-06-12", 2, "2 commits on June 12th."],
+  ["2026-06-13", 2, "2 commits on June 13th."],
+  ["2026-06-21", 2, "2 commits on June 21st."],
+  ["2026-06-30", 2, "2 commits on June 30th."],
+  ["2026-12-31", 2, "2 commits on December 31st."],
+])("hover text for %s with %d commits", (date, commits, text) => {
+  expect(embedded.tooltip(date, commits)).toBe(text);
+});
+
+test("counts read as GitHub writes them", () => {
+  expect([0, 1, 2, 1234].map(count => embedded.commitCount(count))).toEqual(["0 commits", "1 commit", "2 commits", "1,234 commits"]);
+});
+
+test("a day counts the commits of the chosen repositories only", () => {
+  expect(embedded.chosenCommits([3, 5, 7], [true, true, true])).toBe(15);
+  expect(embedded.chosenCommits([3, 5, 7], [false, true, true])).toBe(12);
+  expect(embedded.chosenCommits([3, 5, 7], [false, false, false])).toBe(0);
+  // A day the page holds no counts for had no merges.
+  expect(embedded.chosenCommits(undefined, [true, true, true])).toBe(0);
+});
+
+test("a view reshades among its own days for the chosen repositories", () => {
+  const days = { "2026-11-23": [1, 0], "2026-11-24": [2, 9], "2026-11-25": [0, 4] };
+  const dates = ["2026-11-22", "2026-11-23", "2026-11-24", "2026-11-25"];
+  expect(embedded.shadeDays(dates, days, [true, true])).toEqual({ commits: [0, 1, 11, 4], levels: [0, 1, 3, 2], total: 16 });
+  // Without the second repository, the first's 2 commits on the 24th take the shade 11 commits had.
+  expect(embedded.shadeDays(dates, days, [true, false])).toEqual({ commits: [0, 1, 2, 0], levels: [0, 1, 3, 0], total: 3 });
+  expect(embedded.shadeDays(dates, days, [false, false])).toEqual({ commits: [0, 0, 0, 0], levels: [0, 0, 0, 0], total: 0 });
+  // Only the page's own dates count, never an inherited property.
+  expect(embedded.shadeDays(["constructor", "toString"], days, [true, true]).total).toBe(0);
+});
+
+test("the summary says how many repositories count", () => {
+  expect(embedded.chosenSummary([true, true, true])).toBe("All 3 repositories");
+  expect(embedded.chosenSummary([true, false, true])).toBe("2 of 3 repositories");
+  expect(embedded.chosenSummary([false, false, false])).toBe("No repositories");
+});

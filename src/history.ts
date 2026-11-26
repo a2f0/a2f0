@@ -1,7 +1,7 @@
 /**
  * The contributions history: original (pre-squash) commits and merged pull
- * requests per local calendar day across the matrix. The matrix workspace's
- * `bun run contributions` writes it; this repository only renders it.
+ * requests per local calendar day in each repository of the matrix. The matrix
+ * workspace's `bun run contributions` writes it; this repository only renders it.
  */
 export const HISTORY_FILE = "contributions/commits.json";
 
@@ -10,14 +10,21 @@ export interface DayCount {
   pullRequests: number;
 }
 
+/** One day's merges by repository, `owner/name`, listing only the repositories with any. */
+export type RepositoryCounts = Record<string, DayCount>;
+
 export interface History {
-  schemaVersion: 1;
+  schemaVersion: 2;
   /** The IANA time zone whose calendar days the counts use. */
   timeZone: string;
   /** When the latest count began; the grid ends on its local date. */
   asOf: string;
-  days: Record<string, DayCount>;
+  /** Every counted day, an empty object for a day without merges. */
+  days: Record<string, RepositoryCounts>;
 }
+
+/** A GitHub repository's `owner/name`. */
+const REPOSITORY = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 
 const DAY_MS = 86_400_000;
 
@@ -56,10 +63,20 @@ function isCount(value: unknown): value is DayCount {
   return [commits, pullRequests].every(field => Number.isSafeInteger(field) && (field as number) >= 0);
 }
 
+function invalidRepositories(date: string, repositories: unknown): string | undefined {
+  if (typeof repositories !== "object" || repositories === null || Array.isArray(repositories)) return `days.${date} must be an object of repositories`;
+  for (const [repo, count] of Object.entries(repositories)) {
+    if (!REPOSITORY.test(repo)) return `days.${date} has an invalid repository '${repo}'; use owner/name`;
+    if (!isCount(count)) return `days.${date}["${repo}"] needs non-negative integer commits and pullRequests`;
+  }
+  return undefined;
+}
+
 function invalidDay(days: object): string | undefined {
-  for (const [date, count] of Object.entries(days)) {
+  for (const [date, repositories] of Object.entries(days)) {
     if (!isDate(date)) return `days has an invalid date '${date}'`;
-    if (!isCount(count)) return `days.${date} needs non-negative integer commits and pullRequests`;
+    const problem = invalidRepositories(date, repositories);
+    if (problem) return problem;
   }
   return undefined;
 }
@@ -83,7 +100,7 @@ function invalidTimeZone(timeZone: string): boolean {
 function invalidHistory(value: unknown): string | undefined {
   if (typeof value !== "object" || value === null || Array.isArray(value)) return "it must be a JSON object";
   const { schemaVersion, timeZone, asOf, days } = value as Record<string, unknown>;
-  if (schemaVersion !== 1) return "schemaVersion must be 1";
+  if (schemaVersion !== 2) return "schemaVersion must be 2";
   if (typeof timeZone !== "string" || invalidTimeZone(timeZone)) return "timeZone must be an IANA time zone";
   if (typeof asOf !== "string" || !ISO_INSTANT.test(asOf) || !isDate(asOf.slice(0, 10)) || Number.isNaN(Date.parse(asOf)))
     return "asOf must be an ISO 8601 instant";
@@ -101,4 +118,11 @@ export function parseHistory(text: string, file: string): History {
   const problem = invalidHistory(value);
   if (problem) throw new Error(`${file}: ${problem}.`);
   return value as History;
+}
+
+/** Each day's commits, in every repository together. */
+export function dailyCommits(days: History["days"]): Record<string, number> {
+  return Object.fromEntries(
+    Object.entries(days).map(([date, repositories]) => [date, Object.values(repositories).reduce((total, day) => total + day.commits, 0)]),
+  );
 }
