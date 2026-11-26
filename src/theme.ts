@@ -1,7 +1,7 @@
 /**
- * Primer's colors from @primer/primitives' light and dark themes, which the
- * README images and the web page share: the five contribution shades, the
- * cell border, and the page's text, border, accent, and tooltip colors.
+ * Primer's colors from @primer/primitives' light and dark themes: the five
+ * contribution shades, the cell border, and the page's text, border, accent,
+ * and tooltip colors.
  */
 export interface Theme {
   levels: [string, string, string, string, string];

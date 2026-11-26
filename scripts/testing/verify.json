@@ -4,7 +4,6 @@
     { "label": "lint", "command": ["bun", "run", "lint"] },
     { "label": "types", "command": ["bun", "run", "typecheck"] },
     { "label": "tests", "command": ["bun", "test"] },
-    { "label": "contributions", "command": ["bun", "run", "contributions:check"] },
     { "label": "site", "command": ["bun", "run", "site:build"] },
     { "label": "scripts", "command": ["bun", "run", "lint:scripts"] },
     { "label": "binaries", "command": ["bun", "run", "lint:binary-files", "--all"] },

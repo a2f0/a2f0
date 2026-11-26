@@ -3,9 +3,8 @@
   "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
   "files": {
     "ignoreUnknown": true,
-    // agent-tool writes the harness trees and their manifests; the matrix
-    // workspace writes contributions/commits.json and this repository renders
-    // the rest of contributions/.
+    // agent-tool writes the harness trees and their manifests, and the matrix
+    // workspace writes contributions/commits.json.
     "includes": [
       "**",
       "!node_modules",

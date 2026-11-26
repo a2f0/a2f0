@@ -1,9 +1,10 @@
 # Development
 
-This repository is the a2f0 GitHub profile: GitHub shows its `README.md` at
-<https://github.com/a2f0>, so the README holds only what the profile shows, and
-this guide holds everything else. It also serves the contributions grid as a
-web page at <https://a2f0.github.io/a2f0/>.
+This repository is the a2f0 GitHub profile repository, and it serves a
+contributions grid as a web page. GitHub would show a root `README.md` at
+<https://github.com/a2f0>, and the profile stays at GitHub's default, so the
+repository has no README and this guide holds what one would. This repo is
+available on the web at <https://a2f0.github.io/a2f0/>.
 
 ## Quick start
 
@@ -11,14 +12,11 @@ web page at <https://a2f0.github.io/a2f0/>.
 mise install
 bun install --frozen-lockfile
 bun run hooks:install
-bun run contributions:render
 bun run check
 bun run site:dev   # http://localhost:4173/
 ```
 
-`contributions:render` rewrites the README's grid and the images under
-`contributions/` from `contributions/commits.json`; `check` runs Biome, the
-type checker, the tests, the rendered-grid check, the site build, ShellCheck
+`check` runs Biome, the type checker, the tests, the site build, ShellCheck
 over the hooks, the binary-file check, and the managed skill and permission
 checks. `site:dev` builds the web page into `dist/site` and serves it;
 `site:build` only builds it.
@@ -28,23 +26,17 @@ checks. `site:dev` builds the web page into `dist/site` and serves it;
 The grid copies GitHub's contribution calendar, but each day counts the
 original commits in pull requests merged that day across the repositories the
 [matrix](https://github.com/a2f0/matrix) workspace manages, before squash
-merging collapsed them. On the profile, hovering a day shows its count in the
-browser's own tooltip, and each day links to that day on the web page, which
-shows GitHub's tooltip instead.
+merging collapsed them.
 
 | Path | Contents |
 | --- | --- |
 | `contributions/commits.json` | Daily counts, written only by matrix's `bun run contributions` |
-| `contributions/*.svg` | Cell, label, month, and legend images, rendered here |
-| `README.md` | The grid between `<!-- contributions:start -->` and `<!-- contributions:end -->`, rendered here |
 | `src/history.ts` | Reads and validates the counts |
 | `src/grid.ts` | The 53-week calendar, calendar years, shade levels, month labels, and hover text |
-| `src/theme.ts` | Primer's light and dark colors, shared by the images and the web page |
-| `src/web.ts` | The page's address and HTML escaping, shared by the README section and the web page |
+| `src/theme.ts` | Primer's light and dark colors |
+| `src/web.ts` | The page's address and HTML escaping |
 | `src/pageLogic.ts` | The page script's decisions: the tooltip's state machine, link routing, arrow keys, and placement |
-| `src/render.ts` | The images and the README section |
 | `src/site.ts` | The web page, its 404 page, and its sitemap |
-| `scripts/renderContributions.ts` | `bun run contributions:render` and `contributions:check` |
 | `scripts/buildSite.ts` | `bun run site:build` and `site:dev`, into the ignored `dist/site` |
 | `assets/brand/logo.svg` | The mark agent-tool renders into the site's icons and preview image |
 
@@ -52,9 +44,9 @@ shows GitHub's tooltip instead.
 
 Run `bun run contributions` from the matrix workspace. It counts every day that
 `commits.json` is missing or counted before the day ended, so a run after a gap
-backfills the days in between, then runs this repository's
-`contributions:render`. Commit `contributions/` and `README.md` together.
-`commits.json` has this shape, one line per day:
+backfills the days in between, and it writes only that file; it no longer runs
+a script here. Ship the file as a pull request with the `ship-pr` skill;
+merging it deploys the page. `commits.json` has this shape, one line per day:
 
 ```json
 {
@@ -68,52 +60,29 @@ backfills the days in between, then runs this repository's
 ```
 
 Days are local calendar days in `timeZone`. `asOf` is when the latest count
-began; the grid ends on its local date, which keeps rendering a pure function
-of the file, so CI can check the committed output. Every counted day stays in
-the file, including those older than the grid shows, for views of earlier
-years.
-
-### How the grid renders on GitHub
-
-GitHub's Markdown keeps `title` on `<img>` but removes image maps, inline SVG,
-scripts, and styles. So each day is its own image whose `title` is the hover
-text, written the way GitHub words its own ("12 commits on November 25th.").
-The images sit in a `<div>` inside `<sub>`, whose `line-height` GitHub sets to
-0, so each row of images is exactly one image tall with no gap between rows,
-and the images on a row have no whitespace between them. A one-cell table gives
-the bordered box and scrolls sideways on narrow screens. Each image sits in a
-link to its day on the web page; GitHub keeps such a link and then adds none of
-its own around the image.
-
-Each image carries Primer's light and dark colors and chooses with
-`prefers-color-scheme`. Chromium and Firefox evaluate that query inside an
-image against the page's `color-scheme`, which GitHub sets from the viewer's
-theme, so the cells follow the GitHub theme. Safari evaluates it against the
-system appearance, so there the cells follow the system when it differs from
-the GitHub theme; GitHub's own `<picture>` theming would cover that case at
-twice the markup per day. Shades follow the quartiles of the busy days in the
-year shown, as GitHub's do.
+began; the last year ends on its local date, which keeps the page a pure
+function of the file. Every counted day stays in the file, including those
+older than a year, for views of earlier years. Shades follow the quartiles of
+the busy days in the view shown, as GitHub's do.
 
 ## Web page
 
-A README can only show the browser's `title` tooltip, which sits under the
-pointer in the browser's own font and colors. The web page draws the grid again
-from the same `commits.json` with GitHub's tooltip as GitHub draws it: 12px
-white text on `#25292e` (`#3d444d` in the dark theme), 4px 8px of padding, a
-6px radius, centered 4px above the day, and kept inside the window. Like the
-README, it is a pure function of the file.
+The page draws the grid from `commits.json` with GitHub's tooltip as GitHub
+draws it: 12px white text on `#25292e` (`#3d444d` in the dark theme), 4px 8px
+of padding, a 6px radius, centered 4px above the day, and kept inside the
+window.
 
-- **Views.** The page opens on the year ending on `asOf`'s local date, like the
-  profile. The list beside it offers that year and each calendar year since
-  the first counted day. Radio buttons switch years, so only the tooltips and
-  keyboard need script. A calendar year keeps all its weeks, and days before
-  the first count stay blank rather than showing zero. The last year, like the
-  README, counts a missing day as none; the counter's first run counts all 53
-  weeks, so none is missing in practice.
+- **Views.** The page opens on the year ending on `asOf`'s local date, like
+  GitHub's profile calendar. The list beside it offers that year and each
+  calendar year since the first counted day. Radio buttons switch years, so
+  only the tooltips and keyboard need script. A calendar year keeps all its
+  weeks, and days before the first count stay blank rather than showing zero.
+  The last year counts a missing day as none; the counter's first run counts
+  all 53 weeks, so none is missing in practice.
 - **Links.** `#YYYY-MM-DD` opens that day, in the last year when it falls there
-  and otherwise in its calendar year, and shows its tooltip; the README's days
-  link there. Only the last year's days carry those ids, so each is unique. A
-  blank day, a date that does not exist, or any other hash opens nothing.
+  and otherwise in its calendar year, and shows its tooltip. Only the last
+  year's days carry those ids, so each is unique. A blank day, a date that
+  does not exist, or any other hash opens nothing.
 - **Keyboard.** Tab reaches the calendar, the arrow keys move between days, and
   Escape hides the tooltip wherever focus is.
 - **Script.** Every pointer, focus, and key listener dispatches one event to

@@ -39,7 +39,6 @@
     "steps": [
       { "label": "lint", "command": ["bun", "run", "lint"] },
       { "label": "types", "command": ["bun", "run", "typecheck"] },
-      { "label": "contributions", "command": ["bun", "run", "contributions:check"] },
       { "label": "scripts", "command": ["bun", "run", "lint:scripts"] }
     ],
     "budgetSeconds": 30
