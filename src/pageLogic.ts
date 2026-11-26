@@ -68,6 +68,11 @@ export function step(key: string, row: number, column: number): [number, number]
   }
 }
 
+/** Whether a day shows at all inside the box that scrolls its calendar sideways. */
+export function inside(day: { left: number; right: number }, box: { left: number; right: number }): boolean {
+  return day.right > box.left && day.left < box.right;
+}
+
 /**
  * Where GitHub puts its tooltip, in viewport pixels: centered 4 pixels above
  * the day, at least 8 pixels inside the window's sides, and below the day

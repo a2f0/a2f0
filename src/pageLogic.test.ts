@@ -39,6 +39,11 @@ test("moving focus shows the newly focused day, even under a resting pointer", (
   expect(run([{ type: "focus", day: "b" }, { type: "leave" }], hovering)).toEqual({ kind: "focus", day: "b" });
 });
 
+test("a click or tap focuses its day, so the tooltip stays there after the pointer leaves", () => {
+  // Touch has no hover, so a tapped day keeps its count up until another move.
+  expect(run([{ type: "enter", day: "a" }, { type: "focus", day: "a" }, { type: "leave" }])).toEqual({ kind: "focus", day: "a" });
+});
+
 test("losing focus keeps the hovered day's tooltip and forgets the focused one", () => {
   const state = run([{ type: "focus", day: "f" }, { type: "enter", day: "a" }, { type: "blur" }]);
   expect(state).toEqual({ kind: "hover", day: "a", focused: null });
@@ -90,6 +95,14 @@ test("arrow keys step one row or column, and other keys do not move", () => {
     [4, 10],
   ]);
   for (const key of ["Enter", "Tab", "a", "toString", "constructor"]) expect(embedded.step(key, 3, 10)).toBeNull();
+});
+
+test("a day shows inside its calendar's box only while some of it is within the box", () => {
+  const box = { left: 100, right: 500 };
+  expect(embedded.inside({ left: 200, right: 210 }, box)).toBe(true);
+  expect(embedded.inside({ left: 95, right: 105 }, box)).toBe(true);
+  expect(embedded.inside({ left: 90, right: 100 }, box)).toBe(false);
+  expect(embedded.inside({ left: 500, right: 510 }, box)).toBe(false);
 });
 
 test("the tooltip sits centered 4 pixels above the day, inside the window, or below without room above", () => {

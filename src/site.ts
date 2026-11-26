@@ -187,8 +187,9 @@ ${Object.values(pageLogic)
   const tip = document.getElementById("tooltip");
   const dayOf = target => (target instanceof Element ? target.closest(".day") : null);
   let state = { kind: "hidden" };
+  // A day scrolled out of its calendar's box keeps its state but hides its tooltip until it returns.
   const render = () => {
-    if (state.kind === "hidden") {
+    if (state.kind === "hidden" || !inside(state.day.getBoundingClientRect(), state.day.closest(".scroll").getBoundingClientRect())) {
       tip.hidden = true;
       return;
     }
@@ -215,7 +216,10 @@ ${Object.values(pageLogic)
   });
   document.addEventListener("focusin", event => {
     const day = dayOf(event.target);
-    if (day) dispatch({ type: "focus", day });
+    if (!day) return;
+    // However a day gets focus (keys, a click, a link), it becomes the Tab stop.
+    rove(day);
+    dispatch({ type: "focus", day });
   });
   document.addEventListener("focusout", event => {
     if (dayOf(event.target)) dispatch({ type: "blur" });
