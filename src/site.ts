@@ -158,7 +158,7 @@ header p{margin:4px 0 24px;color:var(--muted)}
 .calendar .month span{position:absolute;top:-3px;left:0}
 .day,.cell{width:10px;height:10px;border-radius:2px;outline:1px solid var(--cell-border);outline-offset:-1px}
 .cell{display:inline-block}
-.day:focus{outline:1px solid var(--text);outline-offset:-1px}
+.day:focus-visible{outline:1px solid var(--text);outline-offset:-1px}
 ${levels}
 .footer{display:flex;justify-content:space-between;align-items:center;gap:16px;margin:4px 0 0 34px;font-size:12px;color:var(--muted)}
 .legend{display:flex;align-items:center;gap:3px;white-space:nowrap}
@@ -229,9 +229,11 @@ ${Object.values(pageLogic)
     const day = dayOf(event.target);
     // rowIndex and cellIndex count the month row and the label column, as rows[] and cells[] do.
     const to = day && step(event.key, day.parentElement.rowIndex, day.cellIndex);
-    const next = to && day.closest("table").rows[to[0]]?.cells[to[1]];
-    if (!next || !next.classList.contains("day")) return;
+    if (!to) return;
+    // An arrow key moves between days only, so at the calendar's edge it does nothing rather than scroll.
     event.preventDefault();
+    const next = day.closest("table").rows[to[0]]?.cells[to[1]];
+    if (!next || !next.classList.contains("day")) return;
     rove(next);
     next.focus();
   });
