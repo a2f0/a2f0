@@ -4,7 +4,7 @@ import type { History } from "./history";
 import * as pageLogic from "./pageLogic";
 import { viewFor } from "./pageLogic";
 import { renderSite, siteViews } from "./site";
-import { SITE_URL } from "./web";
+import { escapeHtml, SITE_URL } from "./web";
 
 // 03:00 UTC on November 26th is still November 25th in New York.
 const history: History = {
@@ -72,7 +72,9 @@ test("every day of the last year is a link target, labeled with GitHub's hover t
   const days = buildGrid(history.days, "2026-11-25").rows.flat();
   expect(days).toHaveLength(7 * 52 + 4);
   for (const cell of days) {
-    expect(page).toContain(`id="${cell!.date}" data-date="${cell!.date}" data-level="${cell!.level}" aria-label="${tooltip(cell!.date, cell!.commits)}"`);
+    expect(page).toContain(
+      `id="${cell.date}" data-date="${cell.date}" data-level="${cell.level}" aria-label="${escapeHtml(tooltip(cell.date, cell.commits))}"`,
+    );
   }
   expect(page).toContain('aria-label="1,234 commits on November 25th."');
 });
@@ -151,7 +153,7 @@ test("each view names the days a link can open, and every day of the last year o
     ["2025", "2025-01-01", "2025-12-31"],
     ["2024", "2024-12-30", "2024-12-31"],
   ]);
-  for (const cell of buildGrid(history.days, "2026-11-25").rows.flat()) expect(viewFor(cell!.date, views)).toBe("last");
+  for (const cell of buildGrid(history.days, "2026-11-25").rows.flat()) expect(viewFor(cell.date, views)).toBe("last");
   // An older day opens its calendar year.
   expect(viewFor("2024-12-30", views)).toBe("2024");
 });

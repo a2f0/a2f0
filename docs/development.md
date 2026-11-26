@@ -3,8 +3,8 @@
 This repository is the a2f0 GitHub profile repository. GitHub would show a
 root `README.md` at <https://github.com/a2f0>, and the profile stays at
 GitHub's default, so the repository has no README and this guide holds what
-one would. It serves a contributions grid as a web page at
-<https://a2f0.github.io/a2f0/>.
+one would. It serves a contributions grid as a web page. This repo is available
+on the web at <https://a2f0.github.io/a2f0/>.
 
 ## Quick start
 
@@ -44,8 +44,9 @@ merging collapsed them.
 
 Run `bun run contributions` from the matrix workspace. It counts every day that
 `commits.json` is missing or counted before the day ended, so a run after a gap
-backfills the days in between. Commit the file; merging deploys the page.
-`commits.json` has this shape, one line per day:
+backfills the days in between, and it writes only that file; it no longer runs
+a script here. Ship the file as a pull request with the `ship-pr` skill;
+merging it deploys the page. `commits.json` has this shape, one line per day:
 
 ```json
 {
