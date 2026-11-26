@@ -27,6 +27,11 @@ test.each([
   [JSON.stringify({ ...valid, timeZone: "Not/A_Zone" }), "timeZone must be an IANA time zone"],
   [JSON.stringify({ ...valid, asOf: "yesterday" }), "asOf must be an ISO 8601 instant"],
   [JSON.stringify({ ...valid, asOf: "Nov 26 2026" }), "asOf must be an ISO 8601 instant"],
+  // 03:00 UTC on November 26th is still November 25th in New York.
+  [
+    JSON.stringify({ ...valid, asOf: "2026-11-26T03:00:00Z", days: { "2026-11-26": { commits: 1, pullRequests: 1 } } }),
+    "days.2026-11-26 is after the local date of asOf (2026-11-25)",
+  ],
   [JSON.stringify({ ...valid, days: [] }), "days must be an object"],
   [JSON.stringify({ ...valid, days: { "2026-02-30": { commits: 1, pullRequests: 1 } } }), "invalid date '2026-02-30'"],
   [JSON.stringify({ ...valid, days: { "2026-11-25": { commits: -1, pullRequests: 0 } } }), "non-negative integer"],
