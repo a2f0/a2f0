@@ -1,0 +1,82 @@
+import { addDays, type DayCount, weekday } from "./history";
+
+/** Columns in the grid: the current week and the 52 before it, as on GitHub. */
+export const WEEKS = 53;
+
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+export type Level = 0 | 1 | 2 | 3 | 4;
+
+export interface Cell {
+  date: string;
+  commits: number;
+  level: Level;
+}
+
+export interface MonthLabel {
+  column: number;
+  name: string;
+}
+
+export interface Grid {
+  /** Seven rows, Sunday first; each holds that weekday's cells, oldest first, through today. */
+  rows: Cell[][];
+  months: MonthLabel[];
+  commits: number;
+}
+
+/**
+ * The upper bounds of levels 1 through 3: the quartiles of the days with any
+ * commits, so the shades spread across the year's busy days as GitHub's do.
+ */
+export function levelBounds(counts: number[]): [number, number, number] {
+  const busy = counts.filter(count => count > 0).sort((a, b) => a - b);
+  if (busy.length === 0) return [0, 0, 0];
+  const quartile = (fraction: number) => busy[Math.ceil(fraction * busy.length) - 1]!;
+  return [quartile(0.25), quartile(0.5), quartile(0.75)];
+}
+
+export function level(count: number, bounds: [number, number, number]): Level {
+  if (count === 0) return 0;
+  const index = bounds.findIndex(bound => count <= bound);
+  return (index === -1 ? 4 : index + 1) as Level;
+}
+
+/** Label each run of weeks by the month of its Sundays, when the run is at least three weeks, wide enough for the name. */
+function monthLabels(start: string): MonthLabel[] {
+  const months = Array.from({ length: WEEKS }, (_, column) => Number(addDays(start, column * 7).slice(5, 7)) - 1);
+  const labels: MonthLabel[] = [];
+  for (let column = 0; column < WEEKS; column++) {
+    if (column > 0 && months[column] === months[column - 1]) continue;
+    let end = column;
+    while (end + 1 < WEEKS && months[end + 1] === months[column]) end++;
+    if (end - column >= 2) labels.push({ column, name: MONTHS[months[column]!]!.slice(0, 3) });
+  }
+  return labels;
+}
+
+/** The grid that ends with `today`, starting on the Sunday 52 weeks before this week's. */
+export function buildGrid(days: Record<string, DayCount>, today: string): Grid {
+  const start = addDays(today, -weekday(today) - 7 * (WEEKS - 1));
+  const dates = Array.from({ length: 7 * (WEEKS - 1) + weekday(today) + 1 }, (_, index) => addDays(start, index));
+  const counts = dates.map(date => days[date]?.commits ?? 0);
+  const bounds = levelBounds(counts);
+  const rows: Cell[][] = Array.from({ length: 7 }, () => []);
+  dates.forEach((date, index) => {
+    const commits = counts[index]!;
+    rows[index % 7]!.push({ date, commits, level: level(commits, bounds) });
+  });
+  return { rows, months: monthLabels(start), commits: counts.reduce((total, count) => total + count, 0) };
+}
+
+function ordinal(day: number): string {
+  const suffix = day % 100 >= 11 && day % 100 <= 13 ? "th" : (["th", "st", "nd", "rd"][day % 10] ?? "th");
+  return `${day}${suffix}`;
+}
+
+/** GitHub's wording: "No commits on November 26th.", "1 commit on ...", "1,234 commits on ...". */
+export function tooltip(date: string, commits: number): string {
+  const when = `${MONTHS[Number(date.slice(5, 7)) - 1]} ${ordinal(Number(date.slice(8, 10)))}`;
+  if (commits === 0) return `No commits on ${when}.`;
+  return `${commits.toLocaleString("en-US")} ${commits === 1 ? "commit" : "commits"} on ${when}.`;
+}

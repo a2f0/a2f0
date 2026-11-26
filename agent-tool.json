@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "subject": {
+    "conventional": true
+  },
+  "branch": {
+    "types": ["feat", "fix", "docs", "style", "refactor", "perf", "test", "build", "ci", "chore", "revert"],
+    "exempt": ["main"],
+    "maxLength": null
+  },
+  "commits": {
+    "signatures": "present",
+    "signatureHeaderFallback": false,
+    "rejectCoauthors": true,
+    "rejectClaudeAttribution": true,
+    "subjects": true
+  },
+  "hooks": {
+    "files": [
+      { "source": "scripts/git/hooks/commit-msg", "target": "commit-msg", "executable": true },
+      { "source": "scripts/git/hooks/pre-commit", "target": "pre-commit", "executable": true },
+      { "source": "scripts/git/hooks/pre-push", "target": "pre-push", "executable": true }
+    ]
+  },
+  "merge": {
+    "requiredChecks": [{ "name": "CI gate", "workflow": "CI" }],
+    "requireStrictBaseFreshness": false
+  },
+  "pr": {
+    "rejectClaudeBranding": true
+  },
+  "permissions": {
+    "executables": {
+      "biome": "local",
+      "tsc": "local"
+    }
+  },
+  "pushGate": {
+    "steps": [
+      { "label": "lint", "command": ["bun", "run", "lint"] },
+      { "label": "types", "command": ["bun", "run", "typecheck"] },
+      { "label": "contributions", "command": ["bun", "run", "contributions:check"] },
+      { "label": "scripts", "command": ["bun", "run", "lint:scripts"] }
+    ],
+    "budgetSeconds": 30
+  }
+}
