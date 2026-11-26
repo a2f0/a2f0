@@ -1,0 +1,175 @@
+import { expect, test } from "bun:test";
+import { buildGrid } from "./grid";
+import type { History } from "./history";
+import * as pageLogic from "./pageLogic";
+import { viewFor } from "./pageLogic";
+import { renderSection } from "./render";
+import { renderSite, siteViews } from "./site";
+import { SITE_URL } from "./web";
+
+// 03:00 UTC on November 26th is still November 25th in New York.
+const history: History = {
+  schemaVersion: 1,
+  timeZone: "America/New_York",
+  asOf: "2026-11-26T03:00:00Z",
+  days: {
+    "2024-12-30": { commits: 1, pullRequests: 1 },
+    "2025-06-02": { commits: 7, pullRequests: 2 },
+    "2026-11-25": { commits: 1234, pullRequests: 9 },
+  },
+};
+const site = renderSite(history);
+const page = site.get("index.html")!;
+
+function meta(attribute: "name" | "property", key: string): string | undefined {
+  return page.match(new RegExp(`<meta ${attribute}="${key}" content="([^"]*)">`))?.[1];
+}
+
+test("the views are the last year, then each calendar year back to the first counted", () => {
+  const views = siteViews(history);
+  expect(views.map(view => view.id)).toEqual(["last", "2026", "2025", "2024"]);
+  expect(views.map(view => view.heading)).toEqual(["1,234 commits in the last year", "1,234 commits in 2026", "7 commits in 2025", "1 commit in 2024"]);
+  // 2024 shows only the days from the first count.
+  expect(views[3]!.grid.rows.flat().filter(cell => cell)).toHaveLength(2);
+});
+
+test("the page carries the metadata search engines and link previews read", () => {
+  expect(page.startsWith('<!doctype html>\n<html lang="en">')).toBe(true);
+  expect(page).toContain('<meta name="viewport" content="width=device-width, initial-scale=1">');
+  const title = page.match(/<title>([^<]*)<\/title>/)![1]!;
+  expect(title.endsWith(" · a2f0")).toBe(true);
+  expect(title.length).toBeLessThanOrEqual(60);
+  const description = meta("name", "description")!;
+  expect(description.length).toBeGreaterThan(50);
+  expect(description.length).toBeLessThanOrEqual(160);
+  expect(page).toContain(`<link rel="canonical" href="${SITE_URL}">`);
+  expect(meta("property", "og:url")).toBe(SITE_URL);
+  expect(meta("property", "og:title")).toBe(title);
+  expect(meta("property", "og:description")).toBe(description);
+  expect(meta("property", "og:type")).toBe("website");
+  expect(meta("property", "og:site_name")).toBe("a2f0");
+  expect(meta("property", "og:image")).toBe(`${SITE_URL}og-image.png`);
+  expect([meta("property", "og:image:width"), meta("property", "og:image:height")]).toEqual(["1200", "630"]);
+  expect(meta("property", "og:image:alt")).toBeTruthy();
+  expect(meta("name", "twitter:card")).toBe("summary_large_image");
+  expect(page.match(/<meta name="theme-color" content="#[0-9a-f]{6}" media="\(prefers-color-scheme: (light|dark)\)">/g)).toHaveLength(2);
+  for (const icon of ["favicon.ico", "favicon.svg", "apple-touch-icon.png"]) expect(page).toContain(`href="${icon}"`);
+  expect(page).not.toContain("noindex");
+});
+
+test("the structured data parses as the WebSite at the canonical address", () => {
+  const json = page.match(/<script type="application\/ld\+json">(.*?)<\/script>/s)![1]!;
+  expect(json).not.toContain("<");
+  expect(JSON.parse(json)).toEqual({
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: "a2f0",
+    url: SITE_URL,
+    description: meta("name", "description"),
+  });
+});
+
+test("every day the README links to has a target on the page, labeled with the README's hover text", () => {
+  const readme = renderSection(buildGrid(history.days, "2026-11-25"));
+  const links = [...readme.matchAll(/<a href="([^"#]*)#([^"]+)"><img [^>]* title="([^"]*)">/g)];
+  expect(links).toHaveLength(7 * 52 + 4);
+  for (const [, url, date, title] of links) {
+    expect(url).toBe(SITE_URL);
+    expect(page).toContain(`id="${date}" data-date="${date}" data-level="`);
+    expect(page).toMatch(new RegExp(`id="${date}" data-date="${date}" data-level="\\d" aria-label="${title!.replace(/\./g, "\\.")}"`));
+  }
+  expect(page).toContain('aria-label="1,234 commits on November 25th."');
+});
+
+test("each calendar row is a label cell then one cell per week, the indexing the arrow keys rely on", () => {
+  const views = siteViews(history);
+  const tables = [...page.matchAll(/<table class="calendar"[^>]*>(.*?)<\/table>/gs)].map(match => match[1]!);
+  expect(tables).toHaveLength(views.length);
+  tables.forEach((table, index) => {
+    const rows = [...table.matchAll(/<tr>(.*?)<\/tr>/gs)].map(match => match[1]!);
+    // One month row, then a row per weekday, each a label and then the weeks.
+    expect(rows).toHaveLength(8);
+    expect(rows[0]!.startsWith('<td class="label">')).toBe(true);
+    for (const row of rows.slice(1)) {
+      const cells = row.match(/<td[ >]/g)!;
+      expect(row.startsWith('<td class="label">')).toBe(true);
+      expect(cells.length).toBeLessThanOrEqual(1 + views[index]!.grid.columns);
+      expect(cells.length).toBeGreaterThanOrEqual(views[index]!.grid.columns);
+    }
+  });
+});
+
+test("each calendar's one Tab stop is its newest day", () => {
+  const views = siteViews(history);
+  const tables = [...page.matchAll(/<table class="calendar"[^>]*>(.*?)<\/table>/gs)].map(match => match[1]!);
+  tables.forEach((table, index) => {
+    const stops = [...table.matchAll(/data-date="([^"]+)"[^>]* tabindex="0"/g)].map(match => match[1]);
+    expect(stops).toEqual([views[index]!.last]);
+    expect(table.match(/class="day"/g)!.length).toBe(table.match(/tabindex="-?[01]"/g)!.length);
+  });
+  // The last year ends on a Wednesday, so its newest day is not the last in document order.
+  expect(views[0]!.last).toBe("2026-11-25");
+});
+
+test("only the last year's days carry ids, so each id is unique", () => {
+  const ids = [...page.matchAll(/ id="(\d{4}-\d{2}-\d{2})"/g)].map(match => match[1]);
+  expect(ids).toHaveLength(7 * 52 + 4);
+  expect(new Set(ids).size).toBe(ids.length);
+  // The same days appear again, without ids, in the calendar years.
+  expect(page.match(/data-date="2026-11-25"/g)).toHaveLength(2);
+});
+
+test("each view has a radio button, the last year checked, and a label in the list beside the calendar", () => {
+  expect(page.match(/<input type="radio" class="view" name="view" id="view-[^"]+"( checked)?>/g)).toHaveLength(4);
+  expect(page).toContain('<input type="radio" class="view" name="view" id="view-last" checked>');
+  // The pointer can return to the last year after choosing a calendar year.
+  expect(page.match(/<label for="view-[^"]+">[^<]+<\/label>/g)).toEqual([
+    '<label for="view-last">Last year</label>',
+    '<label for="view-2026">2026</label>',
+    '<label for="view-2025">2025</label>',
+    '<label for="view-2024">2024</label>',
+  ]);
+  for (const id of ["last", "2026", "2025", "2024"]) {
+    expect(page).toContain(`#view-${id}:checked~.layout .graph-${id}{display:block}`);
+    expect(page).toContain(`#view-${id}:checked~.layout label[for="view-${id}"]{color:#fff;background:var(--accent)}`);
+  }
+});
+
+test("the page's script parses and embeds the tested decisions", () => {
+  const scripts = [...page.matchAll(/<script>\n(.*?)\n<\/script>/gs)].map(match => match[1]!);
+  expect(scripts).toHaveLength(1);
+  expect(() => new Function(scripts[0]!)).not.toThrow();
+  // Every function pageLogic.ts exports, which the tests evaluate as one set.
+  const decisions = Object.values(pageLogic).filter(value => typeof value === "function");
+  expect(decisions.length).toBeGreaterThanOrEqual(5);
+  for (const decision of decisions) expect(scripts[0]).toContain(String(decision));
+});
+
+test("each view names the days a link can open, and every README day opens in the last year", () => {
+  const views = [...page.matchAll(/<section class="graph graph-[^"]+" data-view="([^"]+)" data-first="([^"]+)" data-last="([^"]+)">/g)].map(
+    ([, id, first, last]) => [id!, first!, last!] as [string, string, string],
+  );
+  expect(views).toEqual([
+    ["last", "2025-11-23", "2026-11-25"],
+    ["2026", "2026-01-01", "2026-11-25"],
+    ["2025", "2025-01-01", "2025-12-31"],
+    ["2024", "2024-12-30", "2024-12-31"],
+  ]);
+  const readme = renderSection(buildGrid(history.days, "2026-11-25"));
+  for (const [, date] of readme.matchAll(/#(\d{4}-\d{2}-\d{2})"/g)) expect(viewFor(date!, views)).toBe("last");
+  // An older day opens its calendar year.
+  expect(viewFor("2024-12-30", views)).toBe("2024");
+});
+
+test("the 404 page stays out of search results and links back with absolute addresses", () => {
+  const notFound = site.get("404.html")!;
+  expect(notFound).toContain('<meta name="robots" content="noindex">');
+  expect(notFound).toContain(`<a href="${SITE_URL}">`);
+  expect(notFound).toContain(`href="${SITE_URL}favicon.svg"`);
+  expect(notFound).not.toMatch(/href="(?!https:)/);
+});
+
+test("the sitemap lists the page, last changed when the counts were taken", () => {
+  expect(site.get("sitemap.xml")).toContain(`<url><loc>${SITE_URL}</loc><lastmod>2026-11-26T03:00:00Z</lastmod></url>`);
+  expect([...site.keys()].sort()).toEqual(["404.html", "index.html", "sitemap.xml"]);
+});

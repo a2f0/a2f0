@@ -1,11 +1,15 @@
 import { type Cell, type Grid, tooltip, WEEKS } from "./grid";
+import { DARK, FONT, LIGHT, type Theme } from "./theme";
+import { escapeHtml, SITE_URL } from "./web";
 
 /**
  * GitHub Markdown keeps `<img title>` but strips image maps, inline SVG, and
  * styles, so every day is its own image whose title is the hover text. Inside
  * `<sub>`, whose line-height is 0, a `<div>` lays images out in rows exactly
  * one image tall, so the cells tile like GitHub's calendar. Each image carries
- * Primer's light and dark colors and picks one with prefers-color-scheme.
+ * Primer's light and dark colors and picks one with prefers-color-scheme. The
+ * browser draws a title as it likes, so each day also links to that day on the
+ * web page, whose tooltips match GitHub's.
  */
 export const ASSET_DIR = "contributions";
 export const START = "<!-- contributions:start -->";
@@ -19,10 +23,6 @@ const HEADER_HEIGHT = 18;
 const FOOTER_HEIGHT = 30;
 const LABELS = ["blank", "mon", "blank", "wed", "blank", "fri", "blank"];
 
-// Primer's contribution, foreground, and muted colors (@primer/primitives light and dark themes).
-const LIGHT = { levels: ["#eff2f5", "#aceebb", "#4ac26b", "#2da44e", "#116329"], border: "#1f23280d", text: "#1f2328", muted: "#59636e" };
-const DARK = { levels: ["#151b23", "#033a16", "#196c2e", "#2ea043", "#56d364"], border: "#0104090d", text: "#f0f6fc", muted: "#9198a1" };
-const FONT = `-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans",Helvetica,Arial,sans-serif`;
 const DARK_MODE = "@media (prefers-color-scheme:dark)";
 
 function svg(width: number, height: number, style: string, body: string): string {
@@ -38,7 +38,7 @@ function square(x: number, y: number, className?: string): string {
   return `<rect${name} x="${x + 0.5}" y="${y + 0.5}" width="${CELL - 1}" height="${CELL - 1}" rx="1.5"/>`;
 }
 
-function levelRule(selector: string, theme: typeof LIGHT, level: number): string {
+function levelRule(selector: string, theme: Theme, level: number): string {
   return `${selector}{fill:${theme.levels[level]};stroke:${theme.border}}`;
 }
 
@@ -47,7 +47,7 @@ function cellImage(level: number): string {
 }
 
 function legendStyle(): string {
-  const rules = (theme: typeof LIGHT) => [0, 1, 2, 3, 4].map(level => levelRule(`.l${level}`, theme, level)).join("");
+  const rules = (theme: Theme) => [0, 1, 2, 3, 4].map(level => levelRule(`.l${level}`, theme, level)).join("");
   return `${textStyle()}${rules(LIGHT)}${DARK_MODE}{${rules(DARK)}}`;
 }
 
@@ -83,21 +83,26 @@ export function renderAssets(grid: Grid): Map<string, string> {
   return assets;
 }
 
-function escapeHtml(text: string): string {
-  return text.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
-
 function image(file: string, width: number, height: number, text = ""): string {
   const title = text ? ` title="${escapeHtml(text)}"` : "";
   return `<img src="${ASSET_DIR}/${file}" width="${width}" height="${height}" alt="${escapeHtml(text)}"${title}>`;
 }
 
-function row(cells: Cell[], weekday: number): string {
-  return `${image(`label-${LABELS[weekday]}.svg`, LABEL_WIDTH, PITCH)}${cells.map(cell => image(`level-${cell.level}.svg`, PITCH, PITCH, tooltip(cell.date, cell.commits))).join("")}<br>`;
+/** A day's image, linking to that day on the web page. */
+function day(cell: Cell): string {
+  return `<a href="${SITE_URL}#${cell.date}">${image(`level-${cell.level}.svg`, PITCH, PITCH, tooltip(cell.date, cell.commits))}</a>`;
 }
 
-/** The README section between the markers. Images on one line have no whitespace between them. */
-export function renderSection(grid: Grid): string {
+function row(cells: Cell[], weekday: number): string {
+  return `${image(`label-${LABELS[weekday]}.svg`, LABEL_WIDTH, PITCH)}${cells.map(day).join("")}<br>`;
+}
+
+/**
+ * The README section between the markers. Images on one line have no
+ * whitespace between them, and a blank day would shift the rest of its row,
+ * so it takes only a grid without blank days.
+ */
+export function renderSection(grid: Grid<Cell>): string {
   return [
     START,
     `${grid.commits.toLocaleString("en-US")} commits in the last year`,

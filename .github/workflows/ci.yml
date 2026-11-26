@@ -80,11 +80,38 @@ jobs:
       - name: Test
         run: bun test
 
+  # Every run builds the web page, so a pull request proves what a merge would deploy.
+  site:
+    name: Site
+    runs-on: ubuntu-26.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up pinned Bun
+        uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c # v5.2.6
+        with:
+          version: 2026.11.8
+          install_args: bun
+          cache: true
+
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build the web page and its icons
+        run: bun run site:build
+
+      - name: Upload the site for GitHub Pages
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: dist/site
+
   # The single required check (see agent-tool.json).
   gate:
     name: CI gate
     if: always()
-    needs: [lint, test]
+    needs: [lint, test, site]
     runs-on: ubuntu-26.04
     timeout-minutes: 5
     steps:
@@ -105,3 +132,65 @@ jobs:
         env:
           NEEDS: ${{ toJSON(needs) }}
         run: printf '%s\n' "$NEEDS" | bun run agent-tool ci gate - --policy scripts/checks/ci-gate.json
+
+  # Pushes to main run side by side, so a slower run must not replace a newer page.
+  tip:
+    name: Main tip
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [gate]
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    outputs:
+      current: ${{ steps.tip.outputs.current }}
+    steps:
+      - name: Check that this commit is still main's tip
+        id: tip
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tip=$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)
+          if [ "$tip" = "$GITHUB_SHA" ]; then
+            echo "current=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "main moved to $tip; its own run deploys it."
+            echo "current=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  # Publishes the page this run built once every check has passed. Only a run
+  # for main's tip gets here. The check repeats inside the pages queue in case
+  # main moved while the job waited; that rare skip still leaves an empty
+  # environment deployment, since the job has already started.
+  deploy:
+    name: Deploy
+    if: needs.tip.outputs.current == 'true'
+    needs: [gate, tip]
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    steps:
+      - name: Check again that this commit is still main's tip
+        id: tip
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tip=$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)
+          if [ "$tip" = "$GITHUB_SHA" ]; then
+            echo "current=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "main moved to $tip while this deploy waited; its own run deploys it."
+            echo "current=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        if: steps.tip.outputs.current == 'true'
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

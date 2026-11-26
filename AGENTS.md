@@ -21,10 +21,15 @@ first on `PATH` in each command, after any `cd`, rather than running
 `bun run hooks:install`; run it again after returning to `main` from a merge.
 
 Run `bun run check` for Biome, the type checker, the tests, the rendered-grid
-check, ShellCheck over the hooks, the binary-file check, and the managed skill
-and permission checks. Biome also rejects import cycles, counting type-only
-imports; the layering is `src/history.ts`, then `src/grid.ts`, then
-`src/render.ts`, with `scripts/renderContributions.ts` on top.
+check, the site build, ShellCheck over the hooks, the binary-file check, and
+the managed skill and permission checks. Biome also rejects import cycles,
+counting type-only imports. The modules without imports are
+`src/history.ts`, `src/web.ts`, `src/theme.ts`, and `src/pageLogic.ts`;
+`src/grid.ts` builds on the history, `src/render.ts` on the grid, theme, and
+web modules, `src/site.ts` on every module but `src/render.ts`, and the
+scripts on top. The page embeds every function in `src/pageLogic.ts` by its
+source, so each may use only its parameters, built-ins, and the other
+functions there.
 
 The contributions grid is generated. `contributions/commits.json` is written
 only by the matrix workspace's `bun run contributions`; never edit it or the
@@ -35,6 +40,15 @@ fails in CI and on push when they are stale. The file format and how the grid
 renders on GitHub are in [docs/development.md](docs/development.md); keep the
 renderer within what GitHub's Markdown sanitizer keeps, and check a layout
 change against GitHub's rendered HTML (`gh api markdown`) before shipping it.
+
+The web page at <https://a2f0.github.io/a2f0/> renders from the same file with
+`bun run site:build` into the ignored `dist/site`, and CI deploys it from
+`main` after the `CI gate`. Its icons and preview image are rendered from
+`assets/brand/logo.svg` by `agent-tool images build`, as `agent-tool.json`
+declares; never commit them. Check a page change in a browser with
+`bun run site:dev`, started through `agent-tool proc start`, at desktop and
+phone widths in both themes. [docs/development.md](docs/development.md#web-page)
+describes it.
 
 The hooks in `scripts/git/hooks` are installed by agent-tool from
 `agent-tool.json`: `commit-msg` checks subject and attribution policy, and
@@ -80,8 +94,10 @@ alone, and how to prove behavior did not change; `agent-tool state-machines`
 lists leads. Reviews flag new implicit machines.
 
 Here a closed state type is a TypeScript discriminated union on a `kind` field,
-with its transition function beside it. The renderer is a pure function from
-the counts file to files, with no phases, so it has no machine today.
+with its transition function beside it. The renderers are pure functions from
+the counts file to files; the web page's tooltip is the one machine,
+`nextTooltip` in `src/pageLogic.ts`, which every listener in the page script
+feeds.
 
 ## Shared skills and shipping
 
@@ -97,10 +113,11 @@ independent review of the committed HEAD. Changes land on `main` as
 squash-merged pull requests, the only merge method the repository allows.
 `main` has no branch protection or ruleset, so `agent-tool pr merge` is the
 gate: the required check is `CI gate` from workflow `CI`, which passes only
-when the `lint` and `test` jobs succeed (`scripts/checks/ci-gate.json`). A
-branch need not be current with `main` to merge
-(`merge.requireStrictBaseFreshness` is false); integrate `main` only when
-GitHub reports a conflict. CI runs on every push to `main`, and `ship-pr`
+when the `lint`, `test`, and `site` jobs succeed
+(`scripts/checks/ci-gate.json`). A branch need not be current with `main` to
+merge (`merge.requireStrictBaseFreshness` is false); integrate `main` only
+when GitHub reports a conflict. CI runs on every push to `main`, and `ship-pr`
 starts from `agent-tool repo base-health`, repairing a red `main` before or
-alongside the requested change. Merging publishes the README to the profile;
-there is no other release or deployment.
+alongside the requested change. Merging publishes the README to the profile
+and, through the `Deploy` job, the web page to GitHub Pages; after a merge,
+check the live page with `agent-tool seo probe a2f0.github.io /a2f0/`.
