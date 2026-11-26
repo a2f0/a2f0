@@ -56,9 +56,6 @@ jobs:
       - name: Type-check
         run: bun run typecheck
 
-      - name: Check the rendered contributions grid
-        run: bun run contributions:check
-
   test:
     name: Test
     runs-on: ubuntu-26.04

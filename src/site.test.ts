@@ -1,9 +1,8 @@
 import { expect, test } from "bun:test";
-import { buildGrid } from "./grid";
+import { buildGrid, tooltip } from "./grid";
 import type { History } from "./history";
 import * as pageLogic from "./pageLogic";
 import { viewFor } from "./pageLogic";
-import { renderSection } from "./render";
 import { renderSite, siteViews } from "./site";
 import { SITE_URL } from "./web";
 
@@ -69,14 +68,11 @@ test("the structured data parses as the WebSite at the canonical address", () =>
   });
 });
 
-test("every day the README links to has a target on the page, labeled with the README's hover text", () => {
-  const readme = renderSection(buildGrid(history.days, "2026-11-25"));
-  const links = [...readme.matchAll(/<a href="([^"#]*)#([^"]+)"><img [^>]* title="([^"]*)">/g)];
-  expect(links).toHaveLength(7 * 52 + 4);
-  for (const [, url, date, title] of links) {
-    expect(url).toBe(SITE_URL);
-    expect(page).toContain(`id="${date}" data-date="${date}" data-level="`);
-    expect(page).toMatch(new RegExp(`id="${date}" data-date="${date}" data-level="\\d" aria-label="${title!.replace(/\./g, "\\.")}"`));
+test("every day of the last year is a link target, labeled with GitHub's hover text", () => {
+  const days = buildGrid(history.days, "2026-11-25").rows.flat();
+  expect(days).toHaveLength(7 * 52 + 4);
+  for (const cell of days) {
+    expect(page).toContain(`id="${cell!.date}" data-date="${cell!.date}" data-level="${cell!.level}" aria-label="${tooltip(cell!.date, cell!.commits)}"`);
   }
   expect(page).toContain('aria-label="1,234 commits on November 25th."');
 });
@@ -145,7 +141,7 @@ test("the page's script parses and embeds the tested decisions", () => {
   for (const decision of decisions) expect(scripts[0]).toContain(String(decision));
 });
 
-test("each view names the days a link can open, and every README day opens in the last year", () => {
+test("each view names the days a link can open, and every day of the last year opens there", () => {
   const views = [...page.matchAll(/<section class="graph graph-[^"]+" data-view="([^"]+)" data-first="([^"]+)" data-last="([^"]+)">/g)].map(
     ([, id, first, last]) => [id!, first!, last!] as [string, string, string],
   );
@@ -155,8 +151,7 @@ test("each view names the days a link can open, and every README day opens in th
     ["2025", "2025-01-01", "2025-12-31"],
     ["2024", "2024-12-30", "2024-12-31"],
   ]);
-  const readme = renderSection(buildGrid(history.days, "2026-11-25"));
-  for (const [, date] of readme.matchAll(/#(\d{4}-\d{2}-\d{2})"/g)) expect(viewFor(date!, views)).toBe("last");
+  for (const cell of buildGrid(history.days, "2026-11-25").rows.flat()) expect(viewFor(cell!.date, views)).toBe("last");
   // An older day opens its calendar year.
   expect(viewFor("2024-12-30", views)).toBe("2024");
 });

@@ -2,14 +2,12 @@
   "name": "a2f0-profile",
   "private": true,
   "type": "module",
-  "description": "The a2f0 GitHub profile README and its contributions grid",
+  "description": "The a2f0 contributions grid, served on GitHub Pages",
   "packageManager": "bun@1.4.4",
   "engines": {
     "bun": ">=1.4.4"
   },
   "scripts": {
-    "contributions:render": "bun scripts/renderContributions.ts",
-    "contributions:check": "bun scripts/renderContributions.ts --check",
     "site:build": "bun scripts/buildSite.ts",
     "site:dev": "bun scripts/buildSite.ts --serve",
     "typecheck": "tsc --noEmit",

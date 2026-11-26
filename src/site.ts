@@ -5,11 +5,10 @@ import { DARK, FONT, LIGHT, type Theme } from "./theme";
 import { escapeHtml, SITE_URL } from "./web";
 
 /**
- * The web page's own copy of the grid. A README can only show the browser's
- * title tooltip, so the page draws GitHub's: the measured size, colors, and
- * placement above the day. It renders from the history alone, like the README,
- * and needs script only for the tooltips and keyboard focus; the years switch
- * with radio buttons.
+ * The contributions grid as a web page, with GitHub's tooltip: the measured
+ * size, colors, and placement above the day. It renders from the history
+ * alone, and needs script only for the tooltips and keyboard focus; the years
+ * switch with radio buttons.
  */
 
 const TITLE = "Commits counted before squashing · a2f0";
@@ -78,7 +77,7 @@ function monthHeader(grid: Grid): string {
 
 /**
  * A day, whose label is its hover text. Only the first view's days carry ids,
- * which the README links to. The newest day is the calendar's one Tab stop
+ * which `#YYYY-MM-DD` links open. The newest day is the calendar's one Tab stop
  * until the script moves it, as a roving tabindex does.
  */
 function day(cell: Cell | null, ids: boolean, newest: string): string {
