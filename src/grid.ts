@@ -18,13 +18,14 @@ export interface MonthLabel {
   name: string;
 }
 
-export interface Grid {
+/** A calendar whose cells are `Day`: `Cell | null` when it can have blank days, `Cell` when it has none. */
+export interface Grid<Day extends Cell | null = Cell | null> {
   /**
    * Seven rows, Sunday first; each holds that weekday's cells, oldest first,
-   * through the last date. A null cell is a day before the first date, in the
-   * first week.
+   * through the last date. A null cell is a blank day, before the first date
+   * or before the first count.
    */
-  rows: (Cell | null)[][];
+  rows: Day[][];
   /** Weeks, from the week of the first date through the week of the last. */
   columns: number;
   months: MonthLabel[];
@@ -90,9 +91,20 @@ export function buildRange(days: Record<string, DayCount>, first: string, last: 
   return { rows, columns, months: monthLabels(start, first, columns), commits: counts.reduce((total, count) => total + count, 0) };
 }
 
-/** The grid that ends with `today`, starting on the Sunday 52 weeks before this week's. */
-export function buildGrid(days: Record<string, DayCount>, today: string): Grid {
-  return buildRange(days, addDays(today, -weekday(today) - 7 * (WEEKS - 1)), today);
+/**
+ * The grid that ends with `today`, starting on the Sunday 52 weeks before this
+ * week's. It starts on a Sunday and counts from its first day, so no day is
+ * blank.
+ */
+export function buildGrid(days: Record<string, DayCount>, today: string): Grid<Cell> {
+  const grid = buildRange(days, addDays(today, -weekday(today) - 7 * (WEEKS - 1)), today);
+  const rows = grid.rows.map(cells =>
+    cells.map(cell => {
+      if (!cell) throw new Error("A grid that starts on a Sunday has no blank days.");
+      return cell;
+    }),
+  );
+  return { ...grid, rows };
 }
 
 /**

@@ -25,9 +25,10 @@ check, the site build, ShellCheck over the hooks, the binary-file check, and
 the managed skill and permission checks. Biome also rejects import cycles,
 counting type-only imports. The modules without imports are
 `src/history.ts`, `src/web.ts`, `src/theme.ts`, and `src/pageLogic.ts`;
-`src/grid.ts` builds on the history, `src/render.ts` and `src/site.ts` on all
-of them, and the scripts on top. Functions in `src/pageLogic.ts` reach the page
-by their source, so each may use only its parameters and built-ins.
+`src/grid.ts` builds on the history, `src/render.ts` on the grid, theme, and
+web modules, `src/site.ts` on all of them, and the scripts on top. The page
+embeds every function in `src/pageLogic.ts` by its source, so each may use
+only its parameters, built-ins, and the other functions there.
 
 The contributions grid is generated. `contributions/commits.json` is written
 only by the matrix workspace's `bun run contributions`; never edit it or the

@@ -1,7 +1,8 @@
 import { expect, test } from "bun:test";
 import { buildGrid } from "./grid";
 import type { History } from "./history";
-import { focusedDay, nextTooltip, place, step, viewFor } from "./pageLogic";
+import * as pageLogic from "./pageLogic";
+import { viewFor } from "./pageLogic";
 import { renderSection } from "./render";
 import { renderSite, siteViews } from "./site";
 import { SITE_URL } from "./web";
@@ -107,7 +108,9 @@ test("the page's script parses and embeds the tested decisions", () => {
   expect(scripts).toHaveLength(1);
   expect(() => new Function(scripts[0]!)).not.toThrow();
   // Every function pageLogic.ts exports, which the tests evaluate as one set.
-  for (const decision of [focusedDay, nextTooltip, viewFor, step, place]) expect(scripts[0]).toContain(String(decision));
+  const decisions = Object.values(pageLogic).filter(value => typeof value === "function");
+  expect(decisions.length).toBeGreaterThanOrEqual(5);
+  for (const decision of decisions) expect(scripts[0]).toContain(String(decision));
 });
 
 test("each view names the days a link can open, and every README day opens in the last year", () => {

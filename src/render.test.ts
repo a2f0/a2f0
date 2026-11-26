@@ -31,9 +31,10 @@ test("the section uses only markup GitHub keeps, with no whitespace between a ro
   expect(html.split("\n").filter(line => line.includes("level-"))).toHaveLength(7);
 });
 
-test("the section refuses a grid with blank days, which would break the rows' alignment", () => {
-  // 2026 starts on a Thursday, so its first week has blank days.
-  expect(() => renderSection(buildYear({}, 2026, "2026-11-25", "2026-01-01"))).toThrow("needs a cell for every day");
+test("the section takes only a grid without blank days, which would break the rows' alignment", () => {
+  // 2026 starts on a Thursday, so its first week has blank days, and the type checker refuses it.
+  // @ts-expect-error A calendar year's grid can have blank days.
+  expect(() => renderSection(buildYear({}, 2026, "2026-11-25", "2026-01-01"))).toThrow();
 });
 
 test("every image carries both themes and the labels it shows", () => {
