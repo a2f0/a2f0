@@ -21,7 +21,7 @@ test("totals count only the days the grid shows", () => {
     "2026-11-26": { commits: 50, pullRequests: 5 },
   };
   const grid = buildGrid(days, "2026-11-25");
-  expect([grid.commits, grid.pullRequests]).toEqual([7, 3]);
+  expect(grid.commits).toBe(7);
   expect(grid.rows[0]![0]!.commits).toBe(3);
 });
 

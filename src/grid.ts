@@ -23,7 +23,6 @@ export interface Grid {
   rows: Cell[][];
   months: MonthLabel[];
   commits: number;
-  pullRequests: number;
 }
 
 /**
@@ -60,19 +59,14 @@ function monthLabels(start: string): MonthLabel[] {
 export function buildGrid(days: Record<string, DayCount>, today: string): Grid {
   const start = addDays(today, -weekday(today) - 7 * (WEEKS - 1));
   const dates = Array.from({ length: 7 * (WEEKS - 1) + weekday(today) + 1 }, (_, index) => addDays(start, index));
-  const counts = dates.map(date => days[date] ?? { commits: 0, pullRequests: 0 });
-  const bounds = levelBounds(counts.map(count => count.commits));
+  const counts = dates.map(date => days[date]?.commits ?? 0);
+  const bounds = levelBounds(counts);
   const rows: Cell[][] = Array.from({ length: 7 }, () => []);
   dates.forEach((date, index) => {
-    const commits = counts[index]!.commits;
+    const commits = counts[index]!;
     rows[index % 7]!.push({ date, commits, level: level(commits, bounds) });
   });
-  return {
-    rows,
-    months: monthLabels(start),
-    commits: counts.reduce((total, count) => total + count.commits, 0),
-    pullRequests: counts.reduce((total, count) => total + count.pullRequests, 0),
-  };
+  return { rows, months: monthLabels(start), commits: counts.reduce((total, count) => total + count, 0) };
 }
 
 function ordinal(day: number): string {
