@@ -81,8 +81,8 @@ window.
   all 53 weeks, so none is missing in practice.
 - **Links.** `#YYYY-MM-DD` opens that day, in the last year when it falls there
   and otherwise in its calendar year, and shows its tooltip. Only the last
-  year's days carry those ids, so each is unique. A
-  blank day, a date that does not exist, or any other hash opens nothing.
+  year's days carry those ids, so each is unique. A blank day, a date that
+  does not exist, or any other hash opens nothing.
 - **Keyboard.** Tab reaches the calendar, the arrow keys move between days, and
   Escape hides the tooltip wherever focus is.
 - **Script.** Every pointer, focus, and key listener dispatches one event to

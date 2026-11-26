@@ -94,8 +94,8 @@ export function buildRange(days: Record<string, DayCount>, first: string, last: 
 /**
  * The grid that ends with `today`, starting on the Sunday 52 weeks before this
  * week's. It starts on a Sunday and counts from its first day, so no day is
- * blank, and its type says so: every one of its days is a link target, and
- * code that walks them, such as the page's tests, needs no blank-day checks.
+ * blank, and its type guarantees that every one of its days is a cell, which
+ * is what lets every last-year day be a link target.
  */
 export function buildGrid(days: Record<string, DayCount>, today: string): Grid<Cell> {
   const grid = buildRange(days, addDays(today, -weekday(today) - 7 * (WEEKS - 1)), today);
