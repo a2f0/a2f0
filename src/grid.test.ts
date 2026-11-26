@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { buildGrid, level, levelBounds, tooltip, WEEKS } from "./grid";
+import { buildGrid, buildRange, buildYear, level, levelBounds, tooltip, WEEKS } from "./grid";
 import { addDays, type DayCount } from "./history";
 
 test("the grid ends today and starts on the Sunday 52 weeks before this week's", () => {
@@ -55,4 +55,48 @@ test.each([
   ["2026-06-30", 2, "2 commits on June 30th."],
 ])("hover text for %s with %d commits", (date, commits, text) => {
   expect(tooltip(date, commits)).toBe(text);
+});
+
+test("a year starts on January 1st, blank before it in its first week, and ends on December 31st", () => {
+  // 2025 starts on a Wednesday and ends on a Wednesday.
+  const year = buildYear({ "2025-06-02": { commits: 9, pullRequests: 1 } }, 2025, "2026-11-25", "2025-01-01");
+  expect(year.columns).toBe(53);
+  expect(year.rows.map(row => row[0]?.date ?? null)).toEqual([null, null, null, "2025-01-01", "2025-01-02", "2025-01-03", "2025-01-04"]);
+  expect(year.rows[3]!.at(-1)!.date).toBe("2025-12-31");
+  expect(year.rows[4]!).toHaveLength(52);
+  expect(year.rows.flat().filter(cell => cell)).toHaveLength(365);
+  expect(year.commits).toBe(9);
+  expect(year.months[0]).toEqual({ column: 0, name: "Jan" });
+  expect(year.months.map(month => month.name)).toEqual(["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]);
+});
+
+test("the current year ends today", () => {
+  const year = buildYear({}, 2026, "2026-11-25", "2025-11-21");
+  const dates = year.rows.flat().flatMap(cell => (cell ? [cell.date] : []));
+  expect(dates.sort().at(-1)).toBe("2026-11-25");
+  expect(dates[0]).toBe("2026-01-01");
+});
+
+test("days before the history's first count stay blank and add nothing", () => {
+  const days: Record<string, DayCount> = {
+    "2025-03-04": { commits: 500, pullRequests: 1 },
+    "2025-11-21": { commits: 2, pullRequests: 1 },
+    "2025-11-22": { commits: 0, pullRequests: 0 },
+  };
+  const year = buildYear(days, 2025, "2026-11-25", "2025-11-21");
+  // The grid keeps the whole year's weeks, so the months stay where they belong.
+  expect(year.columns).toBe(53);
+  const cells = year.rows.flat().filter(cell => cell);
+  expect(cells.map(cell => cell!.date).sort()[0]).toBe("2025-11-21");
+  expect(year.commits).toBe(2);
+  // Uncounted days inside the history count as none.
+  expect(cells.find(cell => cell!.date === "2025-12-01")).toEqual({ date: "2025-12-01", commits: 0, level: 0 });
+});
+
+test("each range shades among its own days", () => {
+  const days: Record<string, DayCount> = { "2025-12-30": { commits: 1, pullRequests: 1 }, "2026-01-02": { commits: 100, pullRequests: 1 } };
+  const december = buildRange(days, "2025-12-28", "2025-12-31");
+  expect(december.rows[2]![0]).toEqual({ date: "2025-12-30", commits: 1, level: 1 });
+  const both = buildRange(days, "2025-12-28", "2026-01-03");
+  expect(both.rows[2]![0]!.level).toBeLessThan(both.rows[5]![0]!.level);
 });

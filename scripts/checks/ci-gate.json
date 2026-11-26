@@ -1,5 +1,5 @@
 {
-  "required": ["lint", "test"],
+  "required": ["lint", "test", "site"],
   "allowSkipped": [],
   "conditional": []
 }

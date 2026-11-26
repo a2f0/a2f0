@@ -3,7 +3,7 @@ import { addDays, type DayCount, weekday } from "./history";
 /** Columns in the grid: the current week and the 52 before it, as on GitHub. */
 export const WEEKS = 53;
 
-const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+export const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
 export type Level = 0 | 1 | 2 | 3 | 4;
 
@@ -19,8 +19,14 @@ export interface MonthLabel {
 }
 
 export interface Grid {
-  /** Seven rows, Sunday first; each holds that weekday's cells, oldest first, through today. */
-  rows: Cell[][];
+  /**
+   * Seven rows, Sunday first; each holds that weekday's cells, oldest first,
+   * through the last date. A null cell is a day before the first date, in the
+   * first week.
+   */
+  rows: (Cell | null)[][];
+  /** Weeks, from the week of the first date through the week of the last. */
+  columns: number;
   months: MonthLabel[];
   commits: number;
 }
@@ -42,31 +48,61 @@ export function level(count: number, bounds: [number, number, number]): Level {
   return (index === -1 ? 4 : index + 1) as Level;
 }
 
-/** Label each run of weeks by the month of its Sundays, when the run is at least three weeks, wide enough for the name. */
-function monthLabels(start: string): MonthLabel[] {
-  const months = Array.from({ length: WEEKS }, (_, column) => Number(addDays(start, column * 7).slice(5, 7)) - 1);
+/**
+ * Label each run of weeks by the month of its first counted day (its Sunday,
+ * after the first week), when the run is at least three weeks, wide enough
+ * for the name.
+ */
+function monthLabels(start: string, first: string, columns: number): MonthLabel[] {
+  const months = Array.from({ length: columns }, (_, column) => {
+    const sunday = addDays(start, column * 7);
+    return Number((sunday < first ? first : sunday).slice(5, 7)) - 1;
+  });
   const labels: MonthLabel[] = [];
-  for (let column = 0; column < WEEKS; column++) {
+  for (let column = 0; column < columns; column++) {
     if (column > 0 && months[column] === months[column - 1]) continue;
     let end = column;
-    while (end + 1 < WEEKS && months[end + 1] === months[column]) end++;
+    while (end + 1 < columns && months[end + 1] === months[column]) end++;
     if (end - column >= 2) labels.push({ column, name: MONTHS[months[column]!]!.slice(0, 3) });
   }
   return labels;
 }
 
-/** The grid that ends with `today`, starting on the Sunday 52 weeks before this week's. */
-export function buildGrid(days: Record<string, DayCount>, today: string): Grid {
-  const start = addDays(today, -weekday(today) - 7 * (WEEKS - 1));
-  const dates = Array.from({ length: 7 * (WEEKS - 1) + weekday(today) + 1 }, (_, index) => addDays(start, index));
-  const counts = dates.map(date => days[date]?.commits ?? 0);
+/**
+ * The grid of the weeks from `first` through `last`, starting on Sunday,
+ * shaded among themselves. Days before `first`, or before `countedFrom`, the
+ * first day the history counted, have no cell; any other day the history
+ * lacks counts as none.
+ */
+export function buildRange(days: Record<string, DayCount>, first: string, last: string, countedFrom = first): Grid {
+  const start = addDays(first, -weekday(first));
+  const shown = countedFrom > first ? countedFrom : first;
+  const length = Math.round((Date.parse(last) - Date.parse(start)) / 86_400_000) + 1;
+  const dates = Array.from({ length }, (_, index) => addDays(start, index));
+  const counts = dates.map(date => (date < shown ? 0 : (days[date]?.commits ?? 0)));
   const bounds = levelBounds(counts);
-  const rows: Cell[][] = Array.from({ length: 7 }, () => []);
+  const rows: (Cell | null)[][] = Array.from({ length: 7 }, () => []);
   dates.forEach((date, index) => {
     const commits = counts[index]!;
-    rows[index % 7]!.push({ date, commits, level: level(commits, bounds) });
+    rows[index % 7]!.push(date < shown ? null : { date, commits, level: level(commits, bounds) });
   });
-  return { rows, months: monthLabels(start), commits: counts.reduce((total, count) => total + count, 0) };
+  const columns = rows[0]!.length;
+  return { rows, columns, months: monthLabels(start, first, columns), commits: counts.reduce((total, count) => total + count, 0) };
+}
+
+/** The grid that ends with `today`, starting on the Sunday 52 weeks before this week's. */
+export function buildGrid(days: Record<string, DayCount>, today: string): Grid {
+  return buildRange(days, addDays(today, -weekday(today) - 7 * (WEEKS - 1)), today);
+}
+
+/**
+ * One calendar year, through `today` when it is the current year, as GitHub
+ * shows a year chosen beside its calendar. Days before `countedFrom` stay
+ * blank rather than showing counts nobody took.
+ */
+export function buildYear(days: Record<string, DayCount>, year: number, today: string, countedFrom: string): Grid {
+  const last = `${year}-12-31`;
+  return buildRange(days, `${year}-01-01`, last < today ? last : today, countedFrom);
 }
 
 function ordinal(day: number): string {

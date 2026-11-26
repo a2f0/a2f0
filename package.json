@@ -10,6 +10,8 @@
   "scripts": {
     "contributions:render": "bun scripts/renderContributions.ts",
     "contributions:check": "bun scripts/renderContributions.ts --check",
+    "site:build": "bun scripts/buildSite.ts",
+    "site:dev": "bun scripts/buildSite.ts --serve",
     "typecheck": "tsc --noEmit",
     "lint": "biome ci .",
     "lint:fix": "biome check --write .",
