@@ -177,7 +177,9 @@ function calendars(html: string) {
 
 function toggles(html: string) {
   return [
-    ...html.matchAll(/<label class="repo" title="([^"]+)"><input type="checkbox" name="repo" value="(\d+)" checked><span>([^<]+)<\/span>(.*?)<\/label>/g),
+    ...html.matchAll(
+      /<label class="repo" title="([^"]+)"><input type="checkbox" name="repo" value="(\d+)" autocomplete="off" checked><span>([^<]+)<\/span>(.*?)<\/label>/g,
+    ),
   ].map(([, name, value, label, counts]) => ({
     name,
     value,
@@ -211,7 +213,8 @@ test("the counts the page carries reproduce every view, and total any choice of 
     const dates = view.days.map(day => day.date);
     // Every repository chosen draws what the page was built with.
     const all = shadeDays(dates, counts, [true, true, true]);
-    expect(all.levels).toEqual(view.days.map(day => day.level) as never);
+    const levels: number[] = all.levels;
+    expect(levels).toEqual(view.days.map(day => day.level));
     expect(dates.map((date, index) => escapeHtml(tooltip(date, all.commits[index]!)))).toEqual(view.days.map(day => day.label));
     expect(`${commitCount(all.total)} ${view.period}`).toBe(view.heading);
     // One repository alone totals what its toggle shows.

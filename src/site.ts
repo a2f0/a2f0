@@ -167,7 +167,7 @@ function graph(view: View, ids: boolean): string {
 function repositoryPanel(repositories: Repository[], views: View[]): string {
   const toggles = repositories.map((repository, index) => {
     const counts = views.map(view => `<span class="repo-count" data-view="${view.id}">${repository.commits[view.id]!.toLocaleString("en-US")}</span>`);
-    return `<label class="repo" title="${escapeHtml(repository.name)}"><input type="checkbox" name="repo" value="${index}" checked><span>${escapeHtml(repository.label)}</span>${counts.join("")}</label>`;
+    return `<label class="repo" title="${escapeHtml(repository.name)}"><input type="checkbox" name="repo" value="${index}" autocomplete="off" checked><span>${escapeHtml(repository.label)}</span>${counts.join("")}</label>`;
   });
   return [
     '<fieldset class="repos" id="repos" hidden>',

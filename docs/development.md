@@ -64,10 +64,11 @@ merging it deploys the page. `commits.json` has this shape, one line per day:
 Each day lists, by `owner/name`, the repositories that merged a pull request
 that day, with their original commits and merged pull requests; a day without
 merges is `{}`. A commit counts once per repository per day, so a day's total
-is the sum of its repositories'. Days are local calendar days in `timeZone`. `asOf` is when the latest count
-began; the last year ends on its local date, which keeps the page a pure
-function of the file. Every counted day stays in the file, including those
-older than a year, for views of earlier years. Shades follow the quartiles of
+is the sum of its repositories'. Days are local calendar days in `timeZone`.
+`asOf` is when the latest count began; the last year ends on its local date,
+which keeps the page a pure function of the file. Every counted day stays in
+the file, including those older than a year, for views of earlier years.
+Shades follow the quartiles of
 the busy days in the view shown, as GitHub's do.
 
 ## Web page

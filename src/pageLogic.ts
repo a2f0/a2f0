@@ -141,10 +141,10 @@ export function shadeDays(dates: string[], days: Record<string, number[]>, chose
   return { commits, levels: commits.map(count => level(count, bounds)), total: commits.reduce((total, count) => total + count, 0) };
 }
 
-/** How many of the repositories count: "All 18 repositories", "3 of 18 repositories", "No repositories". */
+/** How many of the repositories count: "All 18 repositories", "3 of 18 repositories", "No repositories", or "1 repository" when it is the only one. */
 export function chosenSummary(chosen: boolean[]): string {
   const count = chosen.filter(Boolean).length;
-  const of = `${chosen.length} ${chosen.length === 1 ? "repository" : "repositories"}`;
-  if (count === chosen.length) return `All ${of}`;
-  return count === 0 ? "No repositories" : `${count} of ${of}`;
+  if (count === 0) return "No repositories";
+  if (count < chosen.length) return `${count} of ${chosen.length} repositories`;
+  return count === 1 ? "1 repository" : `All ${count} repositories`;
 }

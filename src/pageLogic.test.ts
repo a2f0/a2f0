@@ -166,4 +166,8 @@ test("the summary says how many repositories count", () => {
   expect(embedded.chosenSummary([true, true, true])).toBe("All 3 repositories");
   expect(embedded.chosenSummary([true, false, true])).toBe("2 of 3 repositories");
   expect(embedded.chosenSummary([false, false, false])).toBe("No repositories");
+  expect(embedded.chosenSummary([true, false])).toBe("1 of 2 repositories");
+  // A lone repository is neither "All 1" nor plural.
+  expect(embedded.chosenSummary([true])).toBe("1 repository");
+  expect(embedded.chosenSummary([false])).toBe("No repositories");
 });
