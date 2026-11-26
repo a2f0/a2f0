@@ -157,7 +157,8 @@ jobs:
           fi
 
   # Publishes the page this run built once every check has passed. Only a run
-  # for main's tip gets here, so the environment's deployments name what is live.
+  # for main's tip gets here, so the environment's deployments name what is live;
+  # the check repeats inside the pages queue in case main moved while it waited.
   deploy:
     name: Deploy
     if: needs.tip.outputs.current == 'true'
@@ -175,6 +176,20 @@ jobs:
       group: pages
       cancel-in-progress: false
     steps:
+      - name: Check again that this commit is still main's tip
+        id: tip
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tip=$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)
+          if [ "$tip" = "$GITHUB_SHA" ]; then
+            echo "current=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "main moved to $tip while this deploy waited; its own run deploys it."
+            echo "current=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Deploy to GitHub Pages
         id: deployment
+        if: steps.tip.outputs.current == 'true'
         uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

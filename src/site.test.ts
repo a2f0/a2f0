@@ -81,6 +81,24 @@ test("every day the README links to has a target on the page, labeled with the R
   expect(page).toContain('aria-label="1,234 commits on November 25th."');
 });
 
+test("each calendar row is a label cell then one cell per week, the indexing the arrow keys rely on", () => {
+  const views = siteViews(history);
+  const tables = [...page.matchAll(/<table class="calendar"[^>]*>(.*?)<\/table>/gs)].map(match => match[1]!);
+  expect(tables).toHaveLength(views.length);
+  tables.forEach((table, index) => {
+    const rows = [...table.matchAll(/<tr>(.*?)<\/tr>/gs)].map(match => match[1]!);
+    // One month row, then a row per weekday, each a label and then the weeks.
+    expect(rows).toHaveLength(8);
+    expect(rows[0]!.startsWith('<td class="label">')).toBe(true);
+    for (const row of rows.slice(1)) {
+      const cells = row.match(/<td[ >]/g)!;
+      expect(row.startsWith('<td class="label">')).toBe(true);
+      expect(cells.length).toBeLessThanOrEqual(1 + views[index]!.grid.columns);
+      expect(cells.length).toBeGreaterThanOrEqual(views[index]!.grid.columns);
+    }
+  });
+});
+
 test("only the last year's days carry ids, so each id is unique", () => {
   const ids = [...page.matchAll(/ id="(\d{4}-\d{2}-\d{2})"/g)].map(match => match[1]);
   expect(ids).toHaveLength(7 * 52 + 4);

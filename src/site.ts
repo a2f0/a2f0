@@ -279,7 +279,7 @@ function head(views: View[]): string {
     `<meta property="og:image:height" content="${IMAGE.height}">`,
     `<meta property="og:image:alt" content="${escapeHtml(IMAGE.alt)}">`,
     '<meta name="twitter:card" content="summary_large_image">',
-    '<link rel="icon" href="favicon.ico" sizes="48x48">',
+    '<link rel="icon" href="favicon.ico" sizes="any">',
     '<link rel="icon" href="favicon.svg" type="image/svg+xml">',
     '<link rel="apple-touch-icon" href="apple-touch-icon.png">',
     `<script type="application/ld+json">${structured.replace(/</g, "\\u003c")}</script>`,
@@ -332,7 +332,7 @@ function notFound(): string {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
 <title>Page not found · a2f0</title>
-<link rel="icon" href="${SITE_URL}favicon.ico" sizes="48x48">
+<link rel="icon" href="${SITE_URL}favicon.ico" sizes="any">
 <link rel="icon" href="${SITE_URL}favicon.svg" type="image/svg+xml">
 <style>:root{color-scheme:light dark;${themeVariables(LIGHT)}}@media (prefers-color-scheme:dark){:root{${themeVariables(DARK)}}}body{margin:0;background:var(--canvas);color:var(--text);font:14px/1.5 ${FONT}}main{max-width:1012px;margin:0 auto;padding:40px 16px}a{color:var(--accent)}h1{font-size:24px;font-weight:600}</style>
 </head>
