@@ -32,22 +32,29 @@ export function buildSite(root: string, out = path.join(root, SITE_DIR)): string
   mkdirSync(out, { recursive: true });
   const files = siteFiles(root);
   for (const [file, content] of files) writeFileSync(path.join(out, file), content);
-  const agentTool = path.join(root, "node_modules", "@a2f0", "agent-tool", "src", "index.ts");
+  const agentTool = path.join(root, "node_modules", ".bin", "agent-tool");
   for (const target of IMAGE_TARGETS) {
-    const images = spawnSync(process.execPath, [agentTool, "images", "build", target, "--out", out], { cwd: root, encoding: "utf8" });
+    const images = spawnSync(agentTool, ["images", "build", target, "--out", out], { cwd: root, encoding: "utf8" });
     if (images.status !== 0) throw new Error(`agent-tool images build ${target} failed: ${(images.stderr || images.stdout).trim()}`);
   }
   return [...files.keys()];
 }
 
 function serve(out: string): void {
+  const notFound = () => new Response(Bun.file(path.join(out, "404.html")), { status: 404 });
   const server = Bun.serve({
+    hostname: "localhost",
     port: PORT,
     async fetch(request) {
-      const name = decodeURIComponent(new URL(request.url).pathname).replace(/\/$/, "/index.html").slice(1);
+      let name: string;
+      try {
+        name = decodeURIComponent(new URL(request.url).pathname).replace(/\/$/, "/index.html").slice(1);
+      } catch {
+        return notFound();
+      }
       const file = Bun.file(path.join(out, path.normalize(name)));
       if (!name.includes("..") && (await file.exists())) return new Response(file);
-      return new Response(Bun.file(path.join(out, "404.html")), { status: 404 });
+      return notFound();
     },
   });
   console.log(`Serving ${path.relative(ROOT, out)} at http://localhost:${server.port}/`);

@@ -23,9 +23,9 @@ first on `PATH` in each command, after any `cd`, rather than running
 Run `bun run check` for Biome, the type checker, the tests, the rendered-grid
 check, the site build, ShellCheck over the hooks, the binary-file check, and
 the managed skill and permission checks. Biome also rejects import cycles,
-counting type-only imports; the layering is `src/history.ts`, then
-`src/grid.ts` and `src/theme.ts`, then `src/site.ts`, then `src/render.ts`,
-with the scripts on top.
+counting type-only imports; the layering is `src/history.ts` and
+`src/html.ts`, then `src/grid.ts` and `src/theme.ts`, then `src/site.ts`, then
+`src/render.ts`, with the scripts on top.
 
 The contributions grid is generated. `contributions/commits.json` is written
 only by the matrix workspace's `bun run contributions`; never edit it or the
@@ -109,10 +109,9 @@ squash-merged pull requests, the only merge method the repository allows.
 `main` has no branch protection or ruleset, so `agent-tool pr merge` is the
 gate: the required check is `CI gate` from workflow `CI`, which passes only
 when the `lint`, `test`, and `site` jobs succeed
-(`scripts/checks/ci-gate.json`). A
-branch need not be current with `main` to merge
-(`merge.requireStrictBaseFreshness` is false); integrate `main` only when
-GitHub reports a conflict. CI runs on every push to `main`, and `ship-pr`
+(`scripts/checks/ci-gate.json`). A branch need not be current with `main` to
+merge (`merge.requireStrictBaseFreshness` is false); integrate `main` only
+when GitHub reports a conflict. CI runs on every push to `main`, and `ship-pr`
 starts from `agent-tool repo base-health`, repairing a red `main` before or
 alongside the requested change. Merging publishes the README to the profile
 and, through the `Deploy` job, the web page to GitHub Pages; after a merge,

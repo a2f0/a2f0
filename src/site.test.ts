@@ -87,8 +87,9 @@ test("only the last year's days carry ids, so each id is unique", () => {
 });
 
 test("each view has a radio button, the last year checked, and each year a label beside the calendar", () => {
-  expect(page.match(/<input type="radio" class="view" name="view" id="view-[^"]+"( checked)?>/g)).toHaveLength(4);
-  expect(page).toContain('<input type="radio" class="view" name="view" id="view-last" checked>');
+  expect(page.match(/<input type="radio" class="view" name="view" id="view-[^"]+"( aria-label="Last year" checked)?>/g)).toHaveLength(4);
+  // The last year has no label of its own, so it carries its name.
+  expect(page).toContain('<input type="radio" class="view" name="view" id="view-last" aria-label="Last year" checked>');
   expect(page.match(/<label for="view-\d{4}">\d{4}<\/label>/g)).toEqual([
     '<label for="view-2026">2026</label>',
     '<label for="view-2025">2025</label>',

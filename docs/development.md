@@ -40,6 +40,7 @@ shows GitHub's tooltip instead.
 | `src/history.ts` | Reads and validates the counts |
 | `src/grid.ts` | The 53-week calendar, calendar years, shade levels, month labels, and hover text |
 | `src/theme.ts` | Primer's light and dark colors, shared by the images and the web page |
+| `src/html.ts` | HTML escaping, shared by the README section and the web page |
 | `src/render.ts` | The images and the README section |
 | `src/site.ts` | The web page, its 404 page, and its sitemap |
 | `scripts/renderContributions.ts` | `bun run contributions:render` and `contributions:check` |

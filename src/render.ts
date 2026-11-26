@@ -1,4 +1,5 @@
 import { type Cell, type Grid, tooltip, WEEKS } from "./grid";
+import { escapeHtml } from "./html";
 import { SITE_URL } from "./site";
 import { DARK, FONT, LIGHT, type Theme } from "./theme";
 
@@ -81,10 +82,6 @@ export function renderAssets(grid: Grid): Map<string, string> {
   assets.set(`${ASSET_DIR}/months.svg`, monthsImage(grid));
   assets.set(`${ASSET_DIR}/legend.svg`, legendImage());
   return assets;
-}
-
-function escapeHtml(text: string): string {
-  return text.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 function image(file: string, width: number, height: number, text = ""): string {

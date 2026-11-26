@@ -1,5 +1,6 @@
 import { buildGrid, buildYear, type Cell, type Grid, MONTHS, tooltip } from "./grid";
 import { type History, localDate } from "./history";
+import { escapeHtml } from "./html";
 import { DARK, FONT, LIGHT, type Theme } from "./theme";
 
 /**
@@ -24,10 +25,6 @@ export interface View {
   id: string;
   heading: string;
   grid: Grid;
-}
-
-function escapeHtml(text: string): string {
-  return text.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 function commits(count: number): string {
@@ -111,6 +108,7 @@ function themeVariables(theme: Theme): string {
 
 /** Show the checked view, and mark its year (and, for the last year, the current year) as GitHub does. */
 function viewRules(views: View[]): string {
+  // siteViews always lists the current year: no counted day falls after asOf's date.
   const current = views[1]!.id;
   return views
     .map(view => {
@@ -192,6 +190,11 @@ const SCRIPT = `(() => {
     if (focused) show(focused);
     else hide();
   };
+  // One day per calendar is the Tab stop: the newest, or the last one focused.
+  const rove = cell => {
+    for (const other of cell.closest("table").querySelectorAll('.day[tabindex="0"]')) other.tabIndex = -1;
+    cell.tabIndex = 0;
+  };
   for (const table of document.querySelectorAll(".calendar")) {
     const days = table.querySelectorAll(".day");
     for (const cell of days) cell.tabIndex = -1;
@@ -221,8 +224,7 @@ const SCRIPT = `(() => {
     const next = move && table.rows[cell.parentElement.rowIndex + move[0]]?.cells[cell.cellIndex + move[1]];
     if (!next || !next.classList.contains("day")) return;
     event.preventDefault();
-    cell.tabIndex = -1;
-    next.tabIndex = 0;
+    rove(next);
     next.focus();
   });
   const reposition = () => shown && show(shown);
@@ -240,7 +242,7 @@ const SCRIPT = `(() => {
   }
   scrollToEnd();
   const open = () => {
-    const date = decodeURIComponent(location.hash.slice(1));
+    const date = location.hash.slice(1);
     if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(date)) return;
     let cell = document.querySelector('.graph-last .day[data-date="' + date + '"]');
     const year = document.getElementById("view-" + date.slice(0, 4));
@@ -249,6 +251,7 @@ const SCRIPT = `(() => {
       cell = document.querySelector(".graph-" + date.slice(0, 4) + ' .day[data-date="' + date + '"]');
     } else if (cell) document.getElementById("view-last").checked = true;
     if (!cell) return;
+    rove(cell);
     cell.scrollIntoView({ block: "center", inline: "center" });
     cell.focus({ preventScroll: true });
   };
@@ -287,7 +290,9 @@ function head(views: View[]): string {
 function page(history: History): string {
   const views = siteViews(history);
   const { oldest, today } = span(history);
-  const inputs = views.map(view => `<input type="radio" class="view" name="view" id="view-${view.id}"${view.id === "last" ? " checked" : ""}>`);
+  const inputs = views.map(
+    view => `<input type="radio" class="view" name="view" id="view-${view.id}"${view.id === "last" ? ' aria-label="Last year" checked' : ""}>`,
+  );
   const years = views.slice(1).map(view => `<label for="view-${view.id}">${view.id}</label>`);
   return `<!doctype html>
 <html lang="en">
