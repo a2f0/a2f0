@@ -1,0 +1,106 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-26.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up pinned Bun and ShellCheck
+        uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c # v5.2.6
+        with:
+          version: 2026.11.8
+          cache: true
+
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Validate the actual branch name
+        if: github.event_name == 'pull_request' || github.ref_type == 'branch'
+        env:
+          BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+        run: bun run lint:branch-name "$BRANCH_NAME"
+
+      - name: Check for binary files
+        run: bun run lint:binary-files --all
+
+      - name: Lint hook scripts
+        run: bun run lint:scripts
+
+      - name: Check managed agent skills and permissions
+        run: bun run agents:check
+
+      # The tracked pre-push hook matches agent-tool's and its declared steps stay static.
+      - name: Check push gate
+        run: bun run agent-tool push-gate check
+
+      - name: Lint and check formatting
+        run: bun run lint
+
+      - name: Type-check
+        run: bun run typecheck
+
+      - name: Check the rendered contributions grid
+        run: bun run contributions:check
+
+  test:
+    name: Test
+    runs-on: ubuntu-26.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up pinned Bun
+        uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c # v5.2.6
+        with:
+          version: 2026.11.8
+          install_args: bun
+          cache: true
+
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Test
+        run: bun test
+
+  # The single required check (see agent-tool.json).
+  gate:
+    name: CI gate
+    if: always()
+    needs: [lint, test]
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up pinned Bun
+        uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c # v5.2.6
+        with:
+          version: 2026.11.8
+          install_args: bun
+          cache: true
+
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Require every job to succeed
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: printf '%s\n' "$NEEDS" | bun run agent-tool ci gate - --policy scripts/checks/ci-gate.json
