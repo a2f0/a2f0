@@ -115,15 +115,13 @@ function themeVariables(theme: Theme): string {
   return `${levels};--cell-border:${theme.border};--canvas:${theme.canvas};--text:${theme.text};--muted:${theme.muted};--line:${theme.line};--accent:${theme.accent};--hover:${theme.hover};--tooltip:${theme.tooltip}`;
 }
 
-/** Show the checked view, and mark its year (and, for the last year, the current year) as GitHub does. */
+/** Show the checked view and mark its entry in the year list. */
 function viewRules(views: View[]): string {
-  // siteViews always lists the current year: no counted day falls after asOf's date.
-  const current = views[1]!.id;
   return views
     .map(view => {
-      const year = view.id === "last" ? current : view.id;
       const checked = `#view-${view.id}:checked~.layout`;
-      return `${checked} .graph-${view.id}{display:block}${checked} label[for="view-${year}"]{color:#fff;background:var(--accent)}#view-${view.id}:focus-visible~.layout label[for="view-${year}"]{outline:2px solid var(--accent);outline-offset:2px}`;
+      const label = `label[for="view-${view.id}"]`;
+      return `${checked} .graph-${view.id}{display:block}${checked} ${label}{color:#fff;background:var(--accent)}#view-${view.id}:focus-visible~.layout ${label}{outline:2px solid var(--accent);outline-offset:2px}`;
     })
     .join("\n");
 }
@@ -249,9 +247,9 @@ ${Object.values(pageLogic)
   const open = () => {
     const date = location.hash.slice(1);
     const view = viewFor(date, views);
-    if (!view) return;
+    const day = view && document.querySelector(".graph-" + view + ' .day[data-date="' + date + '"]');
+    if (!day) return;
     document.getElementById("view-" + view).checked = true;
-    const day = document.querySelector(".graph-" + view + ' .day[data-date="' + date + '"]');
     rove(day);
     day.scrollIntoView({ block: "center", inline: "center" });
     day.focus({ preventScroll: true });
@@ -291,10 +289,8 @@ function head(views: View[]): string {
 function page(history: History): string {
   const views = siteViews(history);
   const { oldest, today } = span(history);
-  const inputs = views.map(
-    view => `<input type="radio" class="view" name="view" id="view-${view.id}"${view.id === "last" ? ' aria-label="Last year" checked' : ""}>`,
-  );
-  const years = views.slice(1).map(view => `<label for="view-${view.id}">${view.id}</label>`);
+  const inputs = views.map(view => `<input type="radio" class="view" name="view" id="view-${view.id}"${view.id === "last" ? " checked" : ""}>`);
+  const years = views.map(view => `<label for="view-${view.id}">${view.id === "last" ? "Last year" : view.id}</label>`);
   return `<!doctype html>
 <html lang="en">
 <head>

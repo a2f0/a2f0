@@ -89,18 +89,20 @@ test("only the last year's days carry ids, so each id is unique", () => {
   expect(page.match(/data-date="2026-11-25"/g)).toHaveLength(2);
 });
 
-test("each view has a radio button, the last year checked, and each year a label beside the calendar", () => {
-  expect(page.match(/<input type="radio" class="view" name="view" id="view-[^"]+"( aria-label="Last year" checked)?>/g)).toHaveLength(4);
-  // The last year has no label of its own, so it carries its name.
-  expect(page).toContain('<input type="radio" class="view" name="view" id="view-last" aria-label="Last year" checked>');
-  expect(page.match(/<label for="view-\d{4}">\d{4}<\/label>/g)).toEqual([
+test("each view has a radio button, the last year checked, and a label in the list beside the calendar", () => {
+  expect(page.match(/<input type="radio" class="view" name="view" id="view-[^"]+"( checked)?>/g)).toHaveLength(4);
+  expect(page).toContain('<input type="radio" class="view" name="view" id="view-last" checked>');
+  // The pointer can return to the last year after choosing a calendar year.
+  expect(page.match(/<label for="view-[^"]+">[^<]+<\/label>/g)).toEqual([
+    '<label for="view-last">Last year</label>',
     '<label for="view-2026">2026</label>',
     '<label for="view-2025">2025</label>',
     '<label for="view-2024">2024</label>',
   ]);
-  // The last year marks the current year, as GitHub does.
-  expect(page).toContain('#view-last:checked~.layout label[for="view-2026"]{color:#fff;background:var(--accent)}');
-  for (const id of ["last", "2026", "2025", "2024"]) expect(page).toContain(`#view-${id}:checked~.layout .graph-${id}{display:block}`);
+  for (const id of ["last", "2026", "2025", "2024"]) {
+    expect(page).toContain(`#view-${id}:checked~.layout .graph-${id}{display:block}`);
+    expect(page).toContain(`#view-${id}:checked~.layout label[for="view-${id}"]{color:#fff;background:var(--accent)}`);
+  }
 });
 
 test("the page's script parses and embeds the tested decisions", () => {

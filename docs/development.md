@@ -104,13 +104,15 @@ white text on `#25292e` (`#3d444d` in the dark theme), 4px 8px of padding, a
 README, it is a pure function of the file.
 
 - **Views.** The page opens on the year ending on `asOf`'s local date, like the
-  profile, and lists each calendar year since the first counted day beside it.
+  profile. The list beside it offers that year and each calendar year since
+  the first counted day.
   Radio buttons switch years, so only the tooltips and keyboard need script. A
   year keeps all its weeks, and days before the first count stay blank rather
   than showing zero.
 - **Links.** `#YYYY-MM-DD` opens that day, in the last year when it falls there
   and otherwise in its calendar year, and shows its tooltip; the README's days
-  link there. Only the last year's days carry those ids, so each is unique.
+  link there. Only the last year's days carry those ids, so each is unique. A
+  blank day, a date that does not exist, or any other hash opens nothing.
 - **Keyboard.** Tab reaches the calendar, the arrow keys move between days, and
   Escape hides the tooltip wherever focus is.
 - **Script.** Every pointer, focus, and key listener dispatches one event to

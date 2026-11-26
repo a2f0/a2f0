@@ -38,9 +38,14 @@ export function nextTooltip<Day>(state: TooltipState<Day>, event: TooltipEvent<D
   }
 }
 
-/** The first view, as `[id, first day, last day]` in page order, whose days include `date`; null for anything else. */
+/**
+ * The first view, as `[id, first day, last day]` in page order, whose days
+ * include `date`; null for anything else, including a date that does not exist,
+ * which `Date` would roll into the next month.
+ */
 export function viewFor(date: string, views: [string, string, string][]): string | null {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
+  const time = /^\d{4}-\d{2}-\d{2}$/.test(date) ? Date.parse(`${date}T00:00:00Z`) : Number.NaN;
+  if (Number.isNaN(time) || new Date(time).toISOString().slice(0, 10) !== date) return null;
   for (const [id, first, last] of views) if (first <= date && date <= last) return id;
   return null;
 }

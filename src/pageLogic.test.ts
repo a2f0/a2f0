@@ -64,7 +64,20 @@ test("a link opens the first view holding its day, and nothing for blank or unkn
   expect(embedded.viewFor("2025-11-22", views)).toBe("2025");
   expect(embedded.viewFor("2025-11-21", views)).toBe("2025");
   // Before the first count, after today, and anything that is not a date.
-  for (const hash of ["2025-11-20", "2025-01-01", "2026-11-26", "", "2026-9-9", "%E0%A4%A", "2026-09-09x"]) {
+  // Dates that do not exist, which Date would roll into the next month, open nothing either.
+  for (const hash of [
+    "2025-11-20",
+    "2025-01-01",
+    "2026-11-26",
+    "",
+    "2026-9-9",
+    "%E0%A4%A",
+    "2026-09-09x",
+    "2026-02-30",
+    "2025-11-31",
+    "2025-06-00",
+    "2026-13-01",
+  ]) {
     expect(embedded.viewFor(hash, views)).toBeNull();
   }
 });
