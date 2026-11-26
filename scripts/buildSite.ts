@@ -35,7 +35,11 @@ export function buildSite(root: string, out = path.join(root, SITE_DIR)): string
   const agentTool = path.join(root, "node_modules", ".bin", "agent-tool");
   for (const target of IMAGE_TARGETS) {
     const images = spawnSync(agentTool, ["images", "build", target, "--out", out], { cwd: root, encoding: "utf8" });
-    if (images.status !== 0) throw new Error(`agent-tool images build ${target} failed: ${(images.stderr || images.stdout).trim()}`);
+    if (images.status !== 0) {
+      // A command that could not start has no output, only an error.
+      const reason = images.error?.message ?? (images.stderr || images.stdout).trim();
+      throw new Error(`agent-tool images build ${target} failed: ${reason}`);
+    }
   }
   return [...files.keys()];
 }

@@ -1,5 +1,5 @@
 import { afterEach, expect, test } from "bun:test";
-import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { buildSite, sitePath } from "./buildSite";
@@ -50,4 +50,15 @@ test("site:dev maps request paths into the site and refuses any that leave it", 
   for (const pathname of ["/%2e%2e/package.json", "/a/../../x", "/./index.html", "//etc/passwd", "/a%5c..%5cb", "/a%00", "/%E0%A4%A", "index.html"]) {
     expect(sitePath(pathname)).toBeNull();
   }
+});
+
+test("a build whose image tool cannot start says why", () => {
+  // A root without node_modules has no agent-tool to run.
+  const root = tempDir();
+  const project = path.resolve(import.meta.dir, "..");
+  for (const file of ["contributions/commits.json", "agent-tool.json"]) {
+    mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
+    writeFileSync(path.join(root, file), readFileSync(path.join(project, file)));
+  }
+  expect(() => buildSite(root, path.join(root, "dist", "site"))).toThrow(/agent-tool images build favicons failed: .*ENOENT/);
 });

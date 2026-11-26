@@ -223,6 +223,7 @@ ${Object.values(pageLogic)
   document.addEventListener("keydown", event => {
     if (event.key === "Escape") return dispatch({ type: "dismiss" });
     const day = dayOf(event.target);
+    // rowIndex and cellIndex count the month row and the label column, as rows[] and cells[] do.
     const to = day && step(event.key, day.parentElement.rowIndex, day.cellIndex);
     const next = to && day.closest("table").rows[to[0]]?.cells[to[1]];
     if (!next || !next.classList.contains("day")) return;
