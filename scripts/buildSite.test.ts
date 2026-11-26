@@ -40,7 +40,8 @@ test("builds the pages and every icon the head links, replacing what the folder 
   const count = ico.readUInt16LE(4);
   expect(Array.from({ length: count }, (_, index) => ico[6 + index * 16]).sort((a, b) => a! - b!)).toEqual([16, 32, 48]);
   expect(readFileSync(path.join(out, "favicon.svg"), "utf8")).toContain("<svg");
-});
+  // Rendering the images takes well under a second here; a cold CI runner gets room.
+}, 30_000);
 
 test("site:dev maps request paths into the site and refuses any that leave it", () => {
   expect(sitePath("/")).toBe("index.html");

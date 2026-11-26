@@ -105,10 +105,11 @@ README, it is a pure function of the file.
 
 - **Views.** The page opens on the year ending on `asOf`'s local date, like the
   profile. The list beside it offers that year and each calendar year since
-  the first counted day.
-  Radio buttons switch years, so only the tooltips and keyboard need script. A
-  year keeps all its weeks, and days before the first count stay blank rather
-  than showing zero.
+  the first counted day. Radio buttons switch years, so only the tooltips and
+  keyboard need script. A calendar year keeps all its weeks, and days before
+  the first count stay blank rather than showing zero. The last year, like the
+  README, counts a missing day as none; the counter's first run counts all 53
+  weeks, so none is missing in practice.
 - **Links.** `#YYYY-MM-DD` opens that day, in the last year when it falls there
   and otherwise in its calendar year, and shows its tooltip; the README's days
   link there. Only the last year's days carry those ids, so each is unique. A

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- The a2f0 mark: nine days of a contributions grid in Primer's dark-theme greens on its dark
-     canvas. Cells are 8 units with 2-unit gaps and margins, so every edge lands on a whole pixel
+     canvas, #0d1117, which src/theme.ts (DARK.canvas) and agent-tool.json's image fills repeat. Cells are 8 units with 2-unit gaps and margins, so every edge lands on a whole pixel
      at 16 and 32 pixels. agent-tool renders the favicons and the preview image from this file. -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
   <title>a2f0</title>

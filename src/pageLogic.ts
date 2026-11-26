@@ -33,6 +33,8 @@ export function nextTooltip<Day>(state: TooltipState<Day>, event: TooltipEvent<D
       return { kind: "focus", day: event.day };
     case "blur":
       return state.kind === "hover" ? { kind: "hover", day: state.day, focused: null } : { kind: "hidden" };
+    // Escape dismisses until the next move, forgetting the focused day too, so a
+    // pointer passing over the days afterwards does not bring its tooltip back.
     case "dismiss":
       return { kind: "hidden" };
   }
