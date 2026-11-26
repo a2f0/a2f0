@@ -68,8 +68,8 @@ is the sum of its repositories'. Days are local calendar days in `timeZone`.
 `asOf` is when the latest count began; the last year ends on its local date,
 which keeps the page a pure function of the file. Every counted day stays in
 the file, including those older than a year, for views of earlier years.
-Shades follow the quartiles of
-the busy days in the view shown, as GitHub's do.
+Shades follow the quartiles of the busy days in the view shown, as GitHub's
+do.
 
 ## Web page
 

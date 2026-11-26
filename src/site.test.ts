@@ -134,6 +134,18 @@ test("each view has a radio button, the last year checked, and a label in the li
   }
 });
 
+test("the page has every element the toggles' script wires to", () => {
+  const script = page.match(/<script>\n(.*?)\n<\/script>/s)![1]!;
+  for (const id of ["repos", "counts", "repos-summary", "tooltip"]) {
+    expect(script).toContain(`getElementById("${id}")`);
+    expect(page.match(new RegExp(` id="${id}"`, "g"))).toHaveLength(1);
+  }
+  for (const selector of ['input[name="repo"]', "[data-choose]", ".calendar", "h2"]) expect(script).toContain(selector);
+  expect(page.match(/ data-choose="(all|none)"/g)).toHaveLength(2);
+  // Each graph carries the period its redrawn heading ends with.
+  expect(page.match(/ data-period="in (the last year|\d{4})"/g)).toHaveLength(siteViews(history).length);
+});
+
 test("the page's script parses and embeds the tested decisions", () => {
   const scripts = [...page.matchAll(/<script>\n(.*?)\n<\/script>/gs)].map(match => match[1]!);
   expect(scripts).toHaveLength(1);

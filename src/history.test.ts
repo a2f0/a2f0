@@ -54,6 +54,8 @@ test.each([
   [withDay(null), "days.2026-11-25 must be an object of repositories"],
   [withDay({ commits: 1, pullRequests: 1 }), "days.2026-11-25 has an invalid repository 'commits'; use owner/name"],
   [withDay({ "a2f0/web/extra": { commits: 1, pullRequests: 1 } }), "invalid repository 'a2f0/web/extra'"],
+  [withDay({ "../..": { commits: 1, pullRequests: 1 } }), "invalid repository '../..'"],
+  [withDay({ "a2f0/.": { commits: 1, pullRequests: 1 } }), "invalid repository 'a2f0/.'"],
   [withDay({ "a2f0/web": { commits: -1, pullRequests: 0 } }), 'days.2026-11-25["a2f0/web"] needs non-negative integer'],
   [withDay({ "a2f0/web": { commits: 1.5, pullRequests: 0 } }), "non-negative integer"],
   [withDay({ "a2f0/web": { commits: 1 } }), "non-negative integer"],

@@ -23,8 +23,8 @@ export interface History {
   days: Record<string, RepositoryCounts>;
 }
 
-/** A GitHub repository's `owner/name`. */
-const REPOSITORY = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
+/** A GitHub repository's `owner/name`, neither part only dots. */
+const REPOSITORY = /^(?!\.+\/)[A-Za-z0-9_.-]+\/(?!\.+$)[A-Za-z0-9_.-]+$/;
 
 const DAY_MS = 86_400_000;
 

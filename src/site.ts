@@ -349,7 +349,7 @@ ${Object.values(pageLogic)
         recount();
       });
     }
-    // A reload can restore boxes the reader cleared, so draw whatever they hold.
+    // The boxes start checked, as the page was built, unless a browser restores them despite autocomplete="off"; draw from them once either way.
     recount();
     panel.hidden = false;
   }
