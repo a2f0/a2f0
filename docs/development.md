@@ -40,7 +40,8 @@ shows GitHub's tooltip instead.
 | `src/history.ts` | Reads and validates the counts |
 | `src/grid.ts` | The 53-week calendar, calendar years, shade levels, month labels, and hover text |
 | `src/theme.ts` | Primer's light and dark colors, shared by the images and the web page |
-| `src/html.ts` | HTML escaping, shared by the README section and the web page |
+| `src/web.ts` | The page's address and HTML escaping, shared by the README section and the web page |
+| `src/pageLogic.ts` | The page script's decisions: the tooltip's state machine, link routing, arrow keys, and placement |
 | `src/render.ts` | The images and the README section |
 | `src/site.ts` | The web page, its 404 page, and its sitemap |
 | `scripts/renderContributions.ts` | `bun run contributions:render` and `contributions:check` |
@@ -111,7 +112,12 @@ README, it is a pure function of the file.
   and otherwise in its calendar year, and shows its tooltip; the README's days
   link there. Only the last year's days carry those ids, so each is unique.
 - **Keyboard.** Tab reaches the calendar, the arrow keys move between days, and
-  Escape hides the tooltip.
+  Escape hides the tooltip wherever focus is.
+- **Script.** Every pointer, focus, and key listener dispatches one event to
+  the tooltip's transition function, `nextTooltip`, and the page draws the
+  state it returns. That function, the link routing, the arrow-key steps, and
+  the placement are pure functions in `src/pageLogic.ts`; the page embeds them
+  by their source, and the tests run those embedded copies.
 - **Narrow screens.** The calendar scrolls inside its box and starts at the
   newest week, as GitHub's does.
 
@@ -119,9 +125,11 @@ README, it is a pure function of the file.
 
 CI's `Site` job builds the page and uploads it as a Pages artifact on every
 run, so a pull request proves what its merge would publish; the `CI gate`
-requires it. On a push to `main`, the `Deploy` job runs after the gate and
-publishes that artifact with `actions/deploy-pages`, unless `main` has moved
-on, in which case the newer commit's run deploys. Pages is set to build from
+requires it. On a push to `main`, the `Main tip` job checks after the gate
+that the commit is still `main`'s tip, and only then does the `Deploy` job
+publish that artifact with `actions/deploy-pages`; when `main` has moved on,
+the newer commit's run deploys, and the `github-pages` environment records
+only real deployments. Pages is set to build from
 GitHub Actions (`build_type: workflow`), and the deploy uses the
 `github-pages` environment.
 

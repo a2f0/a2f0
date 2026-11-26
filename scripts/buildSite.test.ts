@@ -2,7 +2,7 @@ import { afterEach, expect, test } from "bun:test";
 import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { buildSite } from "./buildSite";
+import { buildSite, sitePath } from "./buildSite";
 
 const ROOT = path.resolve(import.meta.dir, "..");
 const outs: string[] = [];
@@ -40,4 +40,14 @@ test("builds the pages and every icon the head links, replacing what the folder 
   const count = ico.readUInt16LE(4);
   expect(Array.from({ length: count }, (_, index) => ico[6 + index * 16]).sort((a, b) => a! - b!)).toEqual([16, 32, 48]);
   expect(readFileSync(path.join(out, "favicon.svg"), "utf8")).toContain("<svg");
+});
+
+test("site:dev maps request paths into the site and refuses any that leave it", () => {
+  expect(sitePath("/")).toBe("index.html");
+  expect(sitePath("/favicon.ico")).toBe("favicon.ico");
+  expect(sitePath("/a/")).toBe("a/index.html");
+  expect(sitePath("/og%2Dimage.png")).toBe("og-image.png");
+  for (const pathname of ["/%2e%2e/package.json", "/a/../../x", "/./index.html", "//etc/passwd", "/a%5c..%5cb", "/a%00", "/%E0%A4%A", "index.html"]) {
+    expect(sitePath(pathname)).toBeNull();
+  }
 });

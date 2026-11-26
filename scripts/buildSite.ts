@@ -40,21 +40,32 @@ export function buildSite(root: string, out = path.join(root, SITE_DIR)): string
   return [...files.keys()];
 }
 
+/**
+ * The file a request path names inside the site, as GitHub Pages maps it (a
+ * trailing slash means its index.html), or null for a path that does not
+ * decode or that steps outside the site.
+ */
+export function sitePath(pathname: string): string | null {
+  let name: string;
+  try {
+    name = decodeURIComponent(pathname);
+  } catch {
+    return null;
+  }
+  if (!name.startsWith("/")) return null;
+  const parts = `${name}${name.endsWith("/") ? "index.html" : ""}`.slice(1).split("/");
+  return parts.every(part => part !== "" && part !== "." && part !== ".." && !/[\\\0]/.test(part)) ? parts.join("/") : null;
+}
+
 function serve(out: string): void {
   const notFound = () => new Response(Bun.file(path.join(out, "404.html")), { status: 404 });
   const server = Bun.serve({
     hostname: "localhost",
     port: PORT,
     async fetch(request) {
-      let name: string;
-      try {
-        name = decodeURIComponent(new URL(request.url).pathname).replace(/\/$/, "/index.html").slice(1);
-      } catch {
-        return notFound();
-      }
-      const file = Bun.file(path.join(out, path.normalize(name)));
-      if (!name.includes("..") && (await file.exists())) return new Response(file);
-      return notFound();
+      const name = sitePath(new URL(request.url).pathname);
+      const file = name === null ? null : Bun.file(path.join(out, name));
+      return file && (await file.exists()) ? new Response(file) : notFound();
     },
   });
   console.log(`Serving ${path.relative(ROOT, out)} at http://localhost:${server.port}/`);

@@ -1,8 +1,10 @@
 import { expect, test } from "bun:test";
 import { buildGrid } from "./grid";
 import type { History } from "./history";
+import { focusedDay, nextTooltip, place, step, viewFor } from "./pageLogic";
 import { renderSection } from "./render";
-import { renderSite, SITE_URL, siteViews } from "./site";
+import { renderSite, siteViews } from "./site";
+import { SITE_URL } from "./web";
 
 // 03:00 UTC on November 26th is still November 25th in New York.
 const history: History = {
@@ -100,10 +102,28 @@ test("each view has a radio button, the last year checked, and each year a label
   for (const id of ["last", "2026", "2025", "2024"]) expect(page).toContain(`#view-${id}:checked~.layout .graph-${id}{display:block}`);
 });
 
-test("the page's script parses", () => {
+test("the page's script parses and embeds the tested decisions", () => {
   const scripts = [...page.matchAll(/<script>\n(.*?)\n<\/script>/gs)].map(match => match[1]!);
   expect(scripts).toHaveLength(1);
   expect(() => new Function(scripts[0]!)).not.toThrow();
+  // Every function pageLogic.ts exports, which the tests evaluate as one set.
+  for (const decision of [focusedDay, nextTooltip, viewFor, step, place]) expect(scripts[0]).toContain(String(decision));
+});
+
+test("each view names the days a link can open, and every README day opens in the last year", () => {
+  const views = [...page.matchAll(/<section class="graph graph-[^"]+" data-view="([^"]+)" data-first="([^"]+)" data-last="([^"]+)">/g)].map(
+    ([, id, first, last]) => [id!, first!, last!] as [string, string, string],
+  );
+  expect(views).toEqual([
+    ["last", "2025-11-23", "2026-11-25"],
+    ["2026", "2026-01-01", "2026-11-25"],
+    ["2025", "2025-01-01", "2025-12-31"],
+    ["2024", "2024-12-30", "2024-12-31"],
+  ]);
+  const readme = renderSection(buildGrid(history.days, "2026-11-25"));
+  for (const [, date] of readme.matchAll(/#(\d{4}-\d{2}-\d{2})"/g)) expect(viewFor(date!, views)).toBe("last");
+  // An older day opens its calendar year.
+  expect(viewFor("2024-12-30", views)).toBe("2024");
 });
 
 test("the 404 page stays out of search results and links back with absolute addresses", () => {

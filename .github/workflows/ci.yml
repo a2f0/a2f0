@@ -133,25 +133,16 @@ jobs:
           NEEDS: ${{ toJSON(needs) }}
         run: printf '%s\n' "$NEEDS" | bun run agent-tool ci gate - --policy scripts/checks/ci-gate.json
 
-  # Pushes to main publish the page that run built, once every check has passed.
-  deploy:
-    name: Deploy
+  # Pushes to main run side by side, so a slower run must not replace a newer page.
+  tip:
+    name: Main tip
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: [gate]
     runs-on: ubuntu-26.04
-    timeout-minutes: 10
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    concurrency:
-      group: pages
-      cancel-in-progress: false
+    timeout-minutes: 5
+    outputs:
+      current: ${{ steps.tip.outputs.current }}
     steps:
-      # Pushes to main run side by side, so a slower run must not replace a newer page.
       - name: Check that this commit is still main's tip
         id: tip
         env:
@@ -165,7 +156,25 @@ jobs:
             echo "current=false" >> "$GITHUB_OUTPUT"
           fi
 
+  # Publishes the page this run built once every check has passed. Only a run
+  # for main's tip gets here, so the environment's deployments name what is live.
+  deploy:
+    name: Deploy
+    if: needs.tip.outputs.current == 'true'
+    needs: [gate, tip]
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        if: steps.tip.outputs.current == 'true'
         uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

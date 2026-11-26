@@ -23,9 +23,11 @@ first on `PATH` in each command, after any `cd`, rather than running
 Run `bun run check` for Biome, the type checker, the tests, the rendered-grid
 check, the site build, ShellCheck over the hooks, the binary-file check, and
 the managed skill and permission checks. Biome also rejects import cycles,
-counting type-only imports; the layering is `src/history.ts` and
-`src/html.ts`, then `src/grid.ts` and `src/theme.ts`, then `src/site.ts`, then
-`src/render.ts`, with the scripts on top.
+counting type-only imports. The modules without imports are
+`src/history.ts`, `src/web.ts`, `src/theme.ts`, and `src/pageLogic.ts`;
+`src/grid.ts` builds on the history, `src/render.ts` and `src/site.ts` on all
+of them, and the scripts on top. Functions in `src/pageLogic.ts` reach the page
+by their source, so each may use only its parameters and built-ins.
 
 The contributions grid is generated. `contributions/commits.json` is written
 only by the matrix workspace's `bun run contributions`; never edit it or the
@@ -91,8 +93,9 @@ lists leads. Reviews flag new implicit machines.
 
 Here a closed state type is a TypeScript discriminated union on a `kind` field,
 with its transition function beside it. The renderers are pure functions from
-the counts file to files, and the page's script only shows one tooltip at a
-time, so neither has a machine today.
+the counts file to files; the web page's tooltip is the one machine,
+`nextTooltip` in `src/pageLogic.ts`, which every listener in the page script
+feeds.
 
 ## Shared skills and shipping
 

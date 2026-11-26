@@ -1,7 +1,8 @@
 import { buildGrid, buildYear, type Cell, type Grid, MONTHS, tooltip } from "./grid";
 import { type History, localDate } from "./history";
-import { escapeHtml } from "./html";
+import * as pageLogic from "./pageLogic";
 import { DARK, FONT, LIGHT, type Theme } from "./theme";
+import { escapeHtml, SITE_URL } from "./web";
 
 /**
  * The web page's own copy of the grid. A README can only show the browser's
@@ -10,9 +11,6 @@ import { DARK, FONT, LIGHT, type Theme } from "./theme";
  * and needs script only for the tooltips and keyboard focus; the years switch
  * with radio buttons.
  */
-
-/** Where GitHub Pages serves this repository: the owner's github.io site, under the repository's name. */
-export const SITE_URL = "https://a2f0.github.io/a2f0/";
 
 const TITLE = "Commits counted before squashing · a2f0";
 const DESCRIPTION = "Each day's commits in pull requests merged across the a2f0 matrix repositories, counted before squash merging collapsed them.";
@@ -25,6 +23,17 @@ export interface View {
   id: string;
   heading: string;
   grid: Grid;
+  /** The first and last days with a cell, which a `#<date>` link can open. */
+  first: string;
+  last: string;
+}
+
+function view(id: string, heading: string, grid: Grid): View {
+  const dates = grid.rows
+    .flat()
+    .flatMap(cell => (cell ? [cell.date] : []))
+    .sort();
+  return { id, heading, grid, first: dates[0]!, last: dates.at(-1)! };
 }
 
 function commits(count: number): string {
@@ -45,10 +54,10 @@ function span(history: History): { oldest: string; today: string } {
 export function siteViews(history: History): View[] {
   const { oldest, today } = span(history);
   const last = buildGrid(history.days, today);
-  const views: View[] = [{ id: "last", heading: `${commits(last.commits)} in the last year`, grid: last }];
+  const views = [view("last", `${commits(last.commits)} in the last year`, last)];
   for (let year = Number(today.slice(0, 4)); year >= Number(oldest.slice(0, 4)); year--) {
     const grid = buildYear(history.days, year, today, oldest);
-    views.push({ id: String(year), heading: `${commits(grid.commits)} in ${year}`, grid });
+    views.push(view(String(year), `${commits(grid.commits)} in ${year}`, grid));
   }
   return views;
 }
@@ -90,7 +99,7 @@ function calendar(view: View, ids: boolean): string {
 function graph(view: View, ids: boolean): string {
   const legend = [0, 1, 2, 3, 4].map(level => `<span class="cell" data-level="${level}"></span>`).join("");
   return [
-    `<section class="graph graph-${view.id}">`,
+    `<section class="graph graph-${view.id}" data-view="${view.id}" data-first="${view.first}" data-last="${view.last}">`,
     `<h2>${escapeHtml(view.heading)}</h2>`,
     `<div class="box"><div class="scroll">`,
     calendar(view, ids),
@@ -162,98 +171,90 @@ footer{margin-top:32px;font-size:12px;color:var(--muted)}
 }
 
 /**
- * Place GitHub's tooltip 4 pixels above the day, centered and kept inside the
- * page, or below the day when there is no room above. Arrow keys move focus
- * between days, and a link to `#<date>` focuses that day.
+ * The page script: DOM wiring around the pure decisions in `pageLogic.ts`,
+ * every one of which it embeds by its source. Every pointer, focus, and key
+ * listener dispatches one tooltip event, and `render` draws whatever state
+ * `nextTooltip` returns. Arrow keys move focus between days, and a link to
+ * `#<date>` opens that day.
  */
 const SCRIPT = `(() => {
+${Object.values(pageLogic)
+  .filter(value => typeof value === "function")
+  .join("\n")}
   const tip = document.getElementById("tooltip");
   const dayOf = target => (target instanceof Element ? target.closest(".day") : null);
-  let shown = null;
-  const show = cell => {
-    shown = cell;
-    tip.textContent = cell.getAttribute("aria-label");
+  let state = { kind: "hidden" };
+  const render = () => {
+    if (state.kind === "hidden") {
+      tip.hidden = true;
+      return;
+    }
+    tip.textContent = state.day.getAttribute("aria-label");
     tip.hidden = false;
-    const box = cell.getBoundingClientRect();
-    const size = tip.getBoundingClientRect();
-    const width = document.documentElement.clientWidth;
-    const left = Math.max(8, Math.min(box.left + box.width / 2 - size.width / 2, width - size.width - 8));
-    const top = box.top - size.height - 4 >= 0 ? box.top - size.height - 4 : box.bottom + 4;
-    tip.style.transform = "translate(" + (left + scrollX) + "px, " + (top + scrollY) + "px)";
+    const at = place(state.day.getBoundingClientRect(), tip.getBoundingClientRect(), document.documentElement.clientWidth);
+    tip.style.transform = "translate(" + (at.left + scrollX) + "px, " + (at.top + scrollY) + "px)";
   };
-  const hide = () => {
-    shown = null;
-    tip.hidden = true;
-  };
-  const rest = () => {
-    const focused = dayOf(document.activeElement);
-    if (focused) show(focused);
-    else hide();
+  const dispatch = event => {
+    state = nextTooltip(state, event);
+    render();
   };
   // One day per calendar is the Tab stop: the newest, or the last one focused.
-  const rove = cell => {
-    for (const other of cell.closest("table").querySelectorAll('.day[tabindex="0"]')) other.tabIndex = -1;
-    cell.tabIndex = 0;
+  const rove = day => {
+    for (const other of day.closest("table").querySelectorAll('.day[tabindex="0"]')) other.tabIndex = -1;
+    day.tabIndex = 0;
   };
   for (const table of document.querySelectorAll(".calendar")) {
     const days = table.querySelectorAll(".day");
-    for (const cell of days) cell.tabIndex = -1;
+    for (const day of days) day.tabIndex = -1;
     if (days.length) days[days.length - 1].tabIndex = 0;
   }
   document.addEventListener("pointerover", event => {
-    const cell = dayOf(event.target);
-    if (cell) show(cell);
+    const day = dayOf(event.target);
+    if (day) dispatch({ type: "enter", day });
   });
   document.addEventListener("pointerout", event => {
-    if (dayOf(event.target) && !dayOf(event.relatedTarget)) rest();
+    if (dayOf(event.target) && !dayOf(event.relatedTarget)) dispatch({ type: "leave" });
   });
   document.addEventListener("focusin", event => {
-    const cell = dayOf(event.target);
-    if (cell) show(cell);
+    const day = dayOf(event.target);
+    if (day) dispatch({ type: "focus", day });
   });
   document.addEventListener("focusout", event => {
-    if (dayOf(event.target)) hide();
+    if (dayOf(event.target)) dispatch({ type: "blur" });
   });
-  const moves = { ArrowLeft: [0, -1], ArrowRight: [0, 1], ArrowUp: [-1, 0], ArrowDown: [1, 0] };
   document.addEventListener("keydown", event => {
-    const cell = dayOf(event.target);
-    if (!cell) return;
-    if (event.key === "Escape") return cell.blur();
-    const move = moves[event.key];
-    const table = cell.closest("table");
-    const next = move && table.rows[cell.parentElement.rowIndex + move[0]]?.cells[cell.cellIndex + move[1]];
+    if (event.key === "Escape") return dispatch({ type: "dismiss" });
+    const day = dayOf(event.target);
+    const to = day && step(event.key, day.parentElement.rowIndex, day.cellIndex);
+    const next = to && day.closest("table").rows[to[0]]?.cells[to[1]];
     if (!next || !next.classList.contains("day")) return;
     event.preventDefault();
     rove(next);
     next.focus();
   });
-  const reposition = () => shown && show(shown);
-  addEventListener("scroll", reposition, true);
-  addEventListener("resize", reposition);
+  addEventListener("scroll", render, true);
+  addEventListener("resize", render);
   // Like GitHub, show the newest weeks first when the calendar is wider than the page.
   const scrollToEnd = () => {
     for (const box of document.querySelectorAll(".scroll")) box.scrollLeft = box.scrollWidth;
   };
   for (const input of document.querySelectorAll(".view")) {
     input.addEventListener("change", () => {
-      hide();
+      dispatch({ type: "dismiss" });
       scrollToEnd();
     });
   }
   scrollToEnd();
+  const views = [...document.querySelectorAll(".graph")].map(graph => [graph.dataset.view, graph.dataset.first, graph.dataset.last]);
   const open = () => {
     const date = location.hash.slice(1);
-    if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(date)) return;
-    let cell = document.querySelector('.graph-last .day[data-date="' + date + '"]');
-    const year = document.getElementById("view-" + date.slice(0, 4));
-    if (!cell && year) {
-      year.checked = true;
-      cell = document.querySelector(".graph-" + date.slice(0, 4) + ' .day[data-date="' + date + '"]');
-    } else if (cell) document.getElementById("view-last").checked = true;
-    if (!cell) return;
-    rove(cell);
-    cell.scrollIntoView({ block: "center", inline: "center" });
-    cell.focus({ preventScroll: true });
+    const view = viewFor(date, views);
+    if (!view) return;
+    document.getElementById("view-" + view).checked = true;
+    const day = document.querySelector(".graph-" + view + ' .day[data-date="' + date + '"]');
+    rove(day);
+    day.scrollIntoView({ block: "center", inline: "center" });
+    day.focus({ preventScroll: true });
   };
   addEventListener("hashchange", open);
   open();

@@ -1,7 +1,6 @@
 import { type Cell, type Grid, tooltip, WEEKS } from "./grid";
-import { escapeHtml } from "./html";
-import { SITE_URL } from "./site";
 import { DARK, FONT, LIGHT, type Theme } from "./theme";
+import { escapeHtml, SITE_URL } from "./web";
 
 /**
  * GitHub Markdown keeps `<img title>` but strips image maps, inline SVG, and
@@ -94,21 +93,30 @@ function day(cell: Cell): string {
   return `<a href="${SITE_URL}#${cell.date}">${image(`level-${cell.level}.svg`, PITCH, PITCH, tooltip(cell.date, cell.commits))}</a>`;
 }
 
-function row(cells: (Cell | null)[], weekday: number): string {
-  // renderSection refuses a grid with an empty cell.
-  return `${image(`label-${LABELS[weekday]}.svg`, LABEL_WIDTH, PITCH)}${cells.map(cell => day(cell!)).join("")}<br>`;
+function row(cells: Cell[], weekday: number): string {
+  return `${image(`label-${LABELS[weekday]}.svg`, LABEL_WIDTH, PITCH)}${cells.map(day).join("")}<br>`;
+}
+
+/** The grid's rows, refusing an empty cell, which would shift the rest of its row. */
+function fullRows(grid: Grid): Cell[][] {
+  return grid.rows.map(cells =>
+    cells.map(cell => {
+      if (!cell) throw new Error("The README grid needs a cell for every day.");
+      return cell;
+    }),
+  );
 }
 
 /** The README section between the markers. Images on one line have no whitespace between them. */
 export function renderSection(grid: Grid): string {
-  if (grid.rows.some(cells => cells.includes(null))) throw new Error("The README grid needs a cell for every day.");
+  const rows = fullRows(grid);
   return [
     START,
     `${grid.commits.toLocaleString("en-US")} commits in the last year`,
     "",
     "<table><tr><td><sub><div>",
     `${image("months.svg", WIDTH, HEADER_HEIGHT)}<br>`,
-    ...grid.rows.map(row),
+    ...rows.map(row),
     image("legend.svg", WIDTH, FOOTER_HEIGHT),
     "</div></sub></td></tr></table>",
     END,
