@@ -3,9 +3,8 @@
 This is the a2f0 GitHub profile repository. GitHub would show a root
 `README.md` on the public profile, which the owner leaves at GitHub's default,
 so the repository has no README; never add one. Development material lives in
-[docs/development.md](docs/development.md). Resolve
-GitHub identity with `gh repo view --json nameWithOwner`. Work on a feature
-branch created with
+[docs/development.md](docs/development.md). Resolve GitHub identity with
+`gh repo view --json nameWithOwner`. Work on a feature branch created with
 `agent-tool branch create <type>/<topic> --base main --remote origin`, preserve
 unrelated edits, and use signed Conventional Commits without co-author
 trailers. Do not force-push or add attribution footers.
@@ -21,8 +20,9 @@ first on `PATH` in each command, after any `cd`, rather than running
 `mise trust`. Install with `bun install --frozen-lockfile`, then run
 `bun run hooks:install`; run it again after returning to `main` from a merge.
 
-Run `bun run check` for Biome, the type checker, the tests, the site build, ShellCheck over the hooks, the binary-file check, and
-the managed skill and permission checks. Biome also rejects import cycles,
+Run `bun run check` for Biome, the type checker, the tests, the site build,
+ShellCheck over the hooks, the binary-file check, and the managed skill and
+permission checks. Biome also rejects import cycles,
 counting type-only imports. The modules without imports are
 `src/history.ts`, `src/web.ts`, `src/theme.ts`, and `src/pageLogic.ts`;
 `src/grid.ts` builds on the history, `src/site.ts` on every other module, and
@@ -38,10 +38,10 @@ The contributions grid is a web page at <https://a2f0.github.io/a2f0/>,
 rendered from that file by `bun run site:build` into the ignored `dist/site`,
 and CI deploys it from `main` after the `CI gate`. Its icons and preview
 image are rendered from `assets/brand/logo.svg` by `agent-tool images build`,
-as `agent-tool.json` declares; never commit them. Check a page change in a browser with
-`bun run site:dev`, started through `agent-tool proc start`, at desktop and
-phone widths in both themes. [docs/development.md](docs/development.md#web-page)
-describes it.
+as `agent-tool.json` declares; never commit them. Check a page change in a
+browser with `bun run site:dev`, started through `agent-tool proc start`, at
+desktop and phone widths in both themes.
+[docs/development.md](docs/development.md#web-page) describes it.
 
 The hooks in `scripts/git/hooks` are installed by agent-tool from
 `agent-tool.json`: `commit-msg` checks subject and attribution policy, and

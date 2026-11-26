@@ -71,13 +71,13 @@ draws it: 12px white text on `#25292e` (`#3d444d` in the dark theme), 4px 8px
 of padding, a 6px radius, centered 4px above the day, and kept inside the
 window.
 
-- **Views.** The page opens on the year ending on `asOf`'s local date, like the
-  profile. The list beside it offers that year and each calendar year since
-  the first counted day. Radio buttons switch years, so only the tooltips and
-  keyboard need script. A calendar year keeps all its weeks, and days before
-  the first count stay blank rather than showing zero. The last year counts a
-  missing day as none; the counter's first run counts all 53 weeks, so none is
-  missing in practice.
+- **Views.** The page opens on the year ending on `asOf`'s local date, like
+  GitHub's profile calendar. The list beside it offers that year and each
+  calendar year since the first counted day. Radio buttons switch years, so
+  only the tooltips and keyboard need script. A calendar year keeps all its
+  weeks, and days before the first count stay blank rather than showing zero.
+  The last year counts a missing day as none; the counter's first run counts
+  all 53 weeks, so none is missing in practice.
 - **Links.** `#YYYY-MM-DD` opens that day, in the last year when it falls there
   and otherwise in its calendar year, and shows its tooltip. Only the last
   year's days carry those ids, so each is unique. A

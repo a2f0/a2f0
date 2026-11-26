@@ -11,6 +11,8 @@ test("the grid ends today and starts on the Sunday 52 weeks before this week's",
   expect(grid.rows.map(row => row.length)).toEqual([WEEKS, WEEKS, WEEKS, WEEKS, WEEKS - 1, WEEKS - 1, WEEKS - 1]);
   // Row-major cells walk each weekday a week at a time.
   expect(grid.rows[1]![1]!.date).toBe(addDays("2025-11-24", 7));
+  // It starts on a Sunday and counts from its first day, so no day is blank.
+  expect(grid.rows.flat()).not.toContain(null);
 });
 
 test("totals count only the days the grid shows", () => {
