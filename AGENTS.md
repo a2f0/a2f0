@@ -98,8 +98,9 @@ their own: each change redraws every view from the checkboxes through
 updating it, run `bun run agents:sync` and commit the lockfile,
 `.agent-tool-skills.json`, `.agent-tool-permissions.json`, the generated skills
 under `.agents/skills` and `.claude/skills`, and the permission rules in
-`.claude/settings.json` and `.codex/rules/` together. Do not edit managed
-skills. Keep repository guidance here; do not add CLAUDE.md.
+`.claude/settings.json`, `.codex/rules/`, and `.gemini/policies/` together. Do
+not edit managed skills or generated rules. Keep repository guidance here; do
+not add CLAUDE.md, GEMINI.md, or other files under `.gemini/`.
 
 Use the installed `ship-pr` skill for authorized shipping, including an
 independent review of the committed HEAD. Changes land on `main` as
