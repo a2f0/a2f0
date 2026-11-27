@@ -11,7 +11,6 @@
       "!.agents",
       "!.claude",
       "!.codex",
-      "!.gemini",
       "!.agent-tool-permissions.json",
       "!.agent-tool-skills.json",
       "!contributions",
