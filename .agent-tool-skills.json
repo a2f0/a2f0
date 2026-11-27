@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "agentToolVersion": "0.1.75",
+  "agentToolVersion": "0.1.78",
   "files": {
     ".agents/skills/app-store-readiness/SKILL.md": "cf3e8a7561a3bc4679faec7c4776e332ddc735e0a5813e38b23ea633f476997b",
     ".agents/skills/app-store-readiness/references/android.md": "bbf695ca993b7ffb90689373f99a6446774dfedb43dfb240d7b2007bba49073c",
@@ -33,7 +33,7 @@
     ".agents/skills/take-screenshots/SKILL.md": "a95e48c72df57db152093c00de0bfd5f6bffd8f6eae2567fbdd1221a425aa5ca",
     ".agents/skills/take-screenshots/references/adding-capture.md": "167def724045f90bb1c730fa815e20d0e66972598e9095a2e9e968e5bc165ee7",
     ".agents/skills/take-screenshots/agents/openai.yaml": "1a82dc2cd3e7bedb83e75963af5b402ec86e97b1fc92b1aaf5fbf605f011aa6a",
-    ".agents/skills/update-dependencies/SKILL.md": "069b6b81e175ac4bbfad6908bb72990a1a91ed24dd5766c17b04c7e5c9ca9d99",
+    ".agents/skills/update-dependencies/SKILL.md": "96e82e7b47228ca9a9051487b9fcd6bf6a10a818af12ed937a63bf6250f0add5",
     ".claude/skills/app-store-readiness/SKILL.md": "cf3e8a7561a3bc4679faec7c4776e332ddc735e0a5813e38b23ea633f476997b",
     ".claude/skills/app-store-readiness/references/android.md": "bbf695ca993b7ffb90689373f99a6446774dfedb43dfb240d7b2007bba49073c",
     ".claude/skills/app-store-readiness/references/ios.md": "f65509f4b4559998ed8fd57475a8f33c9d144596dec8f02d71c616b707ecd378",
@@ -65,12 +65,12 @@
     ".claude/skills/take-screenshots/SKILL.md": "a95e48c72df57db152093c00de0bfd5f6bffd8f6eae2567fbdd1221a425aa5ca",
     ".claude/skills/take-screenshots/references/adding-capture.md": "167def724045f90bb1c730fa815e20d0e66972598e9095a2e9e968e5bc165ee7",
     ".claude/skills/take-screenshots/agents/openai.yaml": "1a82dc2cd3e7bedb83e75963af5b402ec86e97b1fc92b1aaf5fbf605f011aa6a",
-    ".claude/skills/update-dependencies/SKILL.md": "069b6b81e175ac4bbfad6908bb72990a1a91ed24dd5766c17b04c7e5c9ca9d99",
-    ".agents/skills/optimize-ci/SKILL.md": "bfc19f2c82d7cb0600eb7c8fc3ae3c715fba918caca46742aea746cad0dd015a",
-    ".agents/skills/optimize-ci/references/lessons.md": "d9db832bfcc99e58d5fe477f130bdce9b1985686eb628326a48a6486e8341cc1",
+    ".claude/skills/update-dependencies/SKILL.md": "96e82e7b47228ca9a9051487b9fcd6bf6a10a818af12ed937a63bf6250f0add5",
+    ".agents/skills/optimize-ci/SKILL.md": "f35ce4604322e6caad240cc2175b45c3a32321227ad3b5950a0622c0aff1fc95",
+    ".agents/skills/optimize-ci/references/lessons.md": "f84a57f420e4f6de5293c77b2403f8b4635210519172587b27e5b17dde1863fc",
     ".agents/skills/optimize-ci/agents/openai.yaml": "dd9cb2b4c1d7bb826a1cd6bfb971ea22a0c337b171571024462fa4d13fb3de57",
-    ".claude/skills/optimize-ci/SKILL.md": "bfc19f2c82d7cb0600eb7c8fc3ae3c715fba918caca46742aea746cad0dd015a",
-    ".claude/skills/optimize-ci/references/lessons.md": "d9db832bfcc99e58d5fe477f130bdce9b1985686eb628326a48a6486e8341cc1",
+    ".claude/skills/optimize-ci/SKILL.md": "f35ce4604322e6caad240cc2175b45c3a32321227ad3b5950a0622c0aff1fc95",
+    ".claude/skills/optimize-ci/references/lessons.md": "f84a57f420e4f6de5293c77b2403f8b4635210519172587b27e5b17dde1863fc",
     ".claude/skills/optimize-ci/agents/openai.yaml": "dd9cb2b4c1d7bb826a1cd6bfb971ea22a0c337b171571024462fa4d13fb3de57"
   }
 }
