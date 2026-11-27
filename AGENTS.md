@@ -100,7 +100,7 @@ updating it, run `bun run agents:sync` and commit the lockfile,
 under `.agents/skills` and `.claude/skills`, and the permission rules in
 `.claude/settings.json`, `.codex/rules/`, and `.gemini/policies/` together. Do
 not edit managed skills or generated rules. Keep repository guidance here; do
-not add CLAUDE.md, GEMINI.md, or other files under `.gemini/`.
+not add CLAUDE.md, GEMINI.md, or other Gemini CLI files under `.gemini/`.
 
 Use the installed `ship-pr` skill for authorized shipping, including an
 independent review of the committed HEAD. Changes land on `main` as
